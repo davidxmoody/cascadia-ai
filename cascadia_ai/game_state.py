@@ -1,6 +1,6 @@
 from random import Random
 from cascadia_ai.enums import Wildlife
-from cascadia_ai.environments import Environment, HexPosition, starting_tiles
+from cascadia_ai.environments import Environment, starting_tiles
 from cascadia_ai.tiles import Tile, tiles
 
 
@@ -25,9 +25,3 @@ class GameState:
         self._rand.shuffle(self.tile_supply)
 
         self.environment = Environment(self._rand.choice(starting_tiles))
-
-    def place_tile(self, position: HexPosition, tile: Tile, rotation: int):
-        pass
-
-    def place_wildlife(self, position: HexPosition, wildlife: Wildlife):
-        pass

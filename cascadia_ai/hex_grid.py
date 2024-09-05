@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, NamedTuple
+from typing import Generic, TypeVar
 
 
 type HexPosition = tuple[int, int]
@@ -22,6 +22,9 @@ class HexGrid(Generic[T]):
         if key in self._data:
             raise KeyError("Cannot overwrite existing data")
         self._data[key] = value
+
+    def items(self):
+        return self._data.items()
 
     def copy(self):
         return HexGrid(self._data.copy())
