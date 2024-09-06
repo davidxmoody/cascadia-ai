@@ -3,7 +3,7 @@ from typing import Generic, TypeVar
 
 type HexPosition = tuple[int, int]
 
-hex_steps = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)]
+hex_steps: list[tuple[int, int]] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)]
 
 
 T = TypeVar("T")
@@ -32,7 +32,12 @@ class HexGrid(Generic[T]):
     def adjacent(self, key: HexPosition):
         q, r = key
         for dq, dr in hex_steps:
-            yield (q + dq, r + dr)
+            apos = (q + dq, r + dr)
+            if apos in self._data:
+                yield (apos, self._data[apos])
+
+    def __len__(self):
+        return len(self._data)
 
     def __repr__(self):
         return "\n".join(f"{key}: {value}" for key, value in self._data.items())

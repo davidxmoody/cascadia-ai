@@ -25,3 +25,7 @@ class GameState:
         self._rand.shuffle(self.tile_supply)
 
         self.environment = Environment(self._rand.choice(starting_tiles))
+
+    @property
+    def available_pairs(self):
+        return [(self.tile_supply[i], self.wildlife_bag[i]) for i in range(4)]

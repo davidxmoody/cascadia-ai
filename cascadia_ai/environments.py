@@ -18,6 +18,26 @@ class RotatedTile(NamedTuple):
     tile: Tile
     rotation: int
 
+    def get_edge(self, dpos: tuple[int, int]):
+        h1, h2 = self.tile.habitats
+        rot = self.rotation
+
+        match dpos:
+            case (0, 1):
+                return h1 if 1 <= rot <= 3 else h2
+            case (1, 0):
+                return h1 if 2 <= rot <= 4 else h2
+            case (1, -1):
+                return h1 if 3 <= rot <= 5 else h2
+            case (0, -1):
+                return h2 if 1 <= rot <= 3 else h1
+            case (-1, 0):
+                return h2 if 2 <= rot <= 4 else h1
+            case (-1, 1):
+                return h2 if 3 <= rot <= 5 else h1
+            case _:
+                raise Exception("Get edge called with non adjacent dpos")
+
 
 starting_tile_defs: list[tuple[str, str, str]] = [
     ("MMb", "FWhef", "RPsb"),
