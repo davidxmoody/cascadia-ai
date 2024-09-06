@@ -16,6 +16,11 @@ class Tile(NamedTuple):
     def nature_token_reward(self):
         return self.habitats[0] == self.habitats[1]
 
+    def __repr__(self):
+        h1, h2 = (h.value for h in self.habitats)
+        ws = "".join(w.value for w in self.wildlife_slots)
+        return f'Tile("{h1}{h2}{ws}")'
+
 
 tile_defs = [
     "FFb",

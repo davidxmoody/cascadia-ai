@@ -33,3 +33,6 @@ class HexGrid(Generic[T]):
         q, r = key
         for dq, dr in hex_steps:
             yield (q + dq, r + dr)
+
+    def __repr__(self):
+        return "\n".join(f"{key}: {value}" for key, value in self._data.items())
