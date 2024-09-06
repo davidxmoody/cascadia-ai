@@ -19,14 +19,23 @@ class RotatedTile(NamedTuple):
     rotation: int
 
 
-starting_tiles: list[HexGrid[RotatedTile]] = [
-    HexGrid(
+starting_tile_defs: list[tuple[str, str, str]] = [
+    ("MMb", "FWhef", "RPsb"),
+    ("RRs", "PFseb", "MWfh"),
+    ("PPf", "WRshf", "FMbe"),
+    ("FFe", "MRheb", "WPfs"),
+    ("WWh", "RFseh", "PMbf"),
+]
+
+starting_tiles = [
+    HexGrid[RotatedTile](
         {
-            (0, 0): RotatedTile(Tile.from_definition("MMb"), 0),
-            (0, -1): RotatedTile(Tile.from_definition("FWehf"), 1),
-            (1, -1): RotatedTile(Tile.from_definition("RPbs"), 2),
+            (0, 0): RotatedTile(Tile.from_definition(a), 0),
+            (0, -1): RotatedTile(Tile.from_definition(b), 1),
+            (1, -1): RotatedTile(Tile.from_definition(c), 2),
         }
-    ),
+    )
+    for a, b, c in starting_tile_defs
 ]
 
 
