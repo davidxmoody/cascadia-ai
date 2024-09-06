@@ -7,7 +7,7 @@ from typing import NamedTuple
 print_template = [
     r"   /0\   ",
     r" /5   0\ ",
-    r"|4     1|",
+    r"|4  w  1|",
     r"|4     1|",
     r" \3   2/ ",
     r"   \3/   ",
@@ -64,22 +64,18 @@ class Environment:
                     p = (x + dx, y + dy)
                     if char == " ":
                         continue
+                    elif char == "w":
+                        wildlife = self.wildlife[(q, r)]
+                        if wildlife is not None:
+                            chars[p] = wildlife.value
                     elif char.isdigit():
                         chars[p] = sides[int(char) - rotation].value
                     else:
                         chars[p] = char
 
-        min_x = min(p[0] for p in chars)
-        max_x = max(p[0] for p in chars)
-        min_y = min(p[1] for p in chars)
-        max_y = max(p[1] for p in chars)
-
-        for y in range(min_y, max_y + 1):
+        for y in range(min(p[1] for p in chars), max(p[1] for p in chars) + 1):
             line = ""
-            for x in range(min_x, max_x + 1):
+            for x in range(min(p[0] for p in chars), max(p[0] for p in chars) + 1):
                 p = (x, y)
                 line += chars[p] if p in chars else " "
             print(line)
-
-        # TODO draw habitats in color (or add color later)
-        # TODO add co-ords and/or wildlife and/or wildlife slots
