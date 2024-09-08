@@ -43,9 +43,10 @@ def calculate_habitat_score(tiles: HexGrid[RotatedTile]):
             if merged:
                 del groups[pos]
 
-        score[habitat] = max(len(group) for group in groups.values())
+        score[habitat] = (
+            0 if len(groups) == 0 else max(len(group) for group in groups.values())
+        )
 
-        # TODO add test for bonus
         if score[habitat] >= 7:
             score[habitat] += 2
 

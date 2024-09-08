@@ -69,13 +69,15 @@ class Environment:
 
     def place_tile(self, position: HexPosition, tile: Tile, rotation: int):
         if len(list(self.tiles.adjacent(position))) == 0:
-            raise ValueError("No adjacent tiles")
+            raise ValueError("Placed tile must be adjacent to another tile")
         self.tiles[position] = RotatedTile(tile, rotation)
 
     def place_wildlife(self, position: HexPosition, wildlife: Wildlife):
         rtile = self.tiles[position]
-        if rtile is None or wildlife not in rtile.tile.wildlife_slots:
-            raise ValueError("Cannot place wildlife")
+        if rtile is None:
+            raise ValueError("Cannot place wildlife on a position with no tile")
+        if wildlife not in rtile.tile.wildlife_slots:
+            raise ValueError("Tile does not accept the given wildlife type")
         self.wildlife[position] = wildlife
 
     def print(self):
