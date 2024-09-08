@@ -1,7 +1,7 @@
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import RotatedTile
 from cascadia_ai.game_state import GameState
-from cascadia_ai.hex_grid import HexGrid, HexPosition
+from cascadia_ai.hex_grid import HexGrid, HexPosition, hex_steps
 
 
 def share_edge(
@@ -86,8 +86,49 @@ def calculate_bear_score(wgrid: HexGrid[Wildlife]):
     return score_lookup([0, 4, 11, 19, 27], num_valid_groups)
 
 
+def iter_elk_line_options(points: set[HexPosition], acc: list[int] = []):
+    if len(points) == 0:
+        yield acc
+
+    for starting_point in points:
+        adjacent_steps = [
+            step
+            for step in hex_steps
+            if ((starting_point[0] + step[0], starting_point[1] + step[1]) in points)
+        ]
+
+        if len(adjacent_steps) == 0:
+            yield acc + [1]
+
+        for dq, dr in adjacent_steps:
+            q, r = starting_point
+            line = set[HexPosition]()
+
+            while (q, r) in points:
+                line.add((q, r))
+                q += dq
+                r += dr
+
+            yield from iter_elk_line_options(points - line, acc + [len(line)])
+
+
 def calculate_elk_score(wgrid: HexGrid[Wildlife]):
-    return 0
+    total_score = 0
+
+    groups = find_groups(wgrid.filter(Wildlife.ELK))
+
+    for group in groups:
+        max_group_score = 0
+
+        for lines in iter_elk_line_options(group):
+            max_group_score = max(
+                max_group_score,
+                sum(score_lookup([0, 2, 5, 9, 13], line) for line in lines),
+            )
+
+        total_score += max_group_score
+
+    return total_score
 
 
 def calculate_salmon_score(wgrid: HexGrid[Wildlife]):

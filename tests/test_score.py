@@ -93,6 +93,33 @@ def test_elk_score():
     env = make_env([((q, r), "MMe", 0) for q in range(10) for r in range(10)])
     assert calculate_elk_score(env.wildlife) == 0
 
+    env.place_wildlife((0, 0), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 2
+
+    env.place_wildlife((1, 0), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 5
+
+    env.place_wildlife((2, 0), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 9
+
+    env.place_wildlife((3, 0), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 13
+
+    env.place_wildlife((4, 0), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 13 + 2
+
+    env.place_wildlife((4, 1), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 13 + 5
+
+    env.place_wildlife((6, 6), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 13 + 5 + 2
+
+    env.place_wildlife((0, 1), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 13 + 5 + 2 + 2
+
+    env.place_wildlife((0, 2), Wildlife.ELK)
+    assert calculate_elk_score(env.wildlife) == 13 + 9 + 2 + 2
+
 
 def test_salmon_score():
     env = make_env([((q, r), "MMs", 0) for q in range(10) for r in range(10)])
