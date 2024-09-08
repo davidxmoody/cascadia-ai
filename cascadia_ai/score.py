@@ -54,7 +54,7 @@ def calculate_habitat_score(tiles: HexGrid[RotatedTile]):
     return score
 
 
-def calculate_bears_score(wildlife: HexGrid[Wildlife]):
+def calculate_bear_score(wildlife: HexGrid[Wildlife]):
     bears = {p for p, w in wildlife.items() if w == Wildlife.BEAR}
     potential_pairs = Counter[tuple[HexPosition, HexPosition]]()
 
@@ -66,7 +66,35 @@ def calculate_bears_score(wildlife: HexGrid[Wildlife]):
 
     num_real_pairs = sum(1 for count in potential_pairs.values() if count == 2)
 
-    return [0, 4, 11, 19, 27][min(num_real_pairs, 4)]
+    bear_scores = [0, 4, 11, 19, 27]
+
+    return bear_scores[min(num_real_pairs, len(bear_scores) - 1)]
+
+
+def calculate_elk_score(wildlife: HexGrid[Wildlife]):
+    return 0
+
+
+def calculate_salmon_score(wildlife: HexGrid[Wildlife]):
+    return 0
+
+
+def calculate_hawk_score(wildlife: HexGrid[Wildlife]):
+    hawks = {p for p, w in wildlife.items() if w == Wildlife.HAWK}
+    num_isolated_hawks = 0
+
+    for p in hawks:
+        num_adjacent_hawks = sum(w == Wildlife.HAWK for _, w in wildlife.adjacent(p))
+        if num_adjacent_hawks == 0:
+            num_isolated_hawks += 1
+
+    hawk_scores = [0, 2, 5, 8, 11, 14, 18, 22, 26]
+
+    return hawk_scores[min(num_isolated_hawks, len(hawk_scores) - 1)]
+
+
+def calculate_fox_score(wildlife: HexGrid[Wildlife]):
+    return 0
 
 
 def calculate_wildlife_score(wildlife: HexGrid[Wildlife]):

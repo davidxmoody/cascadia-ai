@@ -1,7 +1,7 @@
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import Environment, RotatedTile
 from cascadia_ai.hex_grid import HexGrid
-from cascadia_ai.score import calculate_habitat_score, calculate_bears_score
+from cascadia_ai.score import calculate_habitat_score, calculate_bear_score, calculate_hawk_score
 from cascadia_ai.tiles import Tile
 
 
@@ -48,35 +48,67 @@ def test_habitat_score_bonus():
     assert score[Habitat("M")] == area_size + 2
 
 
-def test_bears_score():
+def test_bear_score():
     env = make_env([((q, r), "MMb", 0) for q in range(3) for r in range(11)])
-    assert calculate_bears_score(env.wildlife) == 0
+    assert calculate_bear_score(env.wildlife) == 0
 
     env.place_wildlife((0, 0), Wildlife.BEAR)
-    assert calculate_bears_score(env.wildlife) == 0
+    assert calculate_bear_score(env.wildlife) == 0
 
     env.place_wildlife((1, 0), Wildlife.BEAR)
-    assert calculate_bears_score(env.wildlife) == 4
+    assert calculate_bear_score(env.wildlife) == 4
 
     env.place_wildlife((2, 0), Wildlife.BEAR)
-    assert calculate_bears_score(env.wildlife) == 0
+    assert calculate_bear_score(env.wildlife) == 0
 
     env.place_wildlife((0, 2), Wildlife.BEAR)
     env.place_wildlife((1, 2), Wildlife.BEAR)
-    assert calculate_bears_score(env.wildlife) == 4
+    assert calculate_bear_score(env.wildlife) == 4
 
     env.place_wildlife((0, 4), Wildlife.BEAR)
     env.place_wildlife((1, 4), Wildlife.BEAR)
-    assert calculate_bears_score(env.wildlife) == 11
+    assert calculate_bear_score(env.wildlife) == 11
 
     env.place_wildlife((0, 6), Wildlife.BEAR)
     env.place_wildlife((1, 6), Wildlife.BEAR)
-    assert calculate_bears_score(env.wildlife) == 19
+    assert calculate_bear_score(env.wildlife) == 19
 
     env.place_wildlife((0, 8), Wildlife.BEAR)
     env.place_wildlife((1, 8), Wildlife.BEAR)
-    assert calculate_bears_score(env.wildlife) == 27
+    assert calculate_bear_score(env.wildlife) == 27
 
     env.place_wildlife((0, 10), Wildlife.BEAR)
     env.place_wildlife((1, 10), Wildlife.BEAR)
-    assert calculate_bears_score(env.wildlife) == 27
+    assert calculate_bear_score(env.wildlife) == 27
+
+
+def test_hawk_score():
+    env = make_env([((q, r), "MMh", 0) for q in range(10) for r in range(10)])
+    assert calculate_hawk_score(env.wildlife) == 0
+
+    env.place_wildlife((0, 0), Wildlife.HAWK)
+    assert calculate_hawk_score(env.wildlife) == 2
+
+    env.place_wildlife((1, 0), Wildlife.HAWK)
+    assert calculate_hawk_score(env.wildlife) == 0
+
+    env.place_wildlife((0, 2), Wildlife.HAWK)
+    assert calculate_hawk_score(env.wildlife) == 2
+
+    env.place_wildlife((2, 2), Wildlife.HAWK)
+    assert calculate_hawk_score(env.wildlife) == 5
+
+    env.place_wildlife((2, 4), Wildlife.HAWK)
+    assert calculate_hawk_score(env.wildlife) == 8
+
+    env.place_wildlife((4, 4), Wildlife.HAWK)
+    env.place_wildlife((4, 6), Wildlife.HAWK)
+    env.place_wildlife((6, 6), Wildlife.HAWK)
+    assert calculate_hawk_score(env.wildlife) == 18
+
+    env.place_wildlife((6, 8), Wildlife.HAWK)
+    env.place_wildlife((8, 8), Wildlife.HAWK)
+    assert calculate_hawk_score(env.wildlife) == 26
+
+    env.place_wildlife((0, 8), Wildlife.HAWK)
+    assert calculate_hawk_score(env.wildlife) == 26
