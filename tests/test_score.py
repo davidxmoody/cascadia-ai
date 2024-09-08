@@ -1,7 +1,7 @@
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import Environment, RotatedTile
 from cascadia_ai.hex_grid import HexGrid
-from cascadia_ai.score import calculate_habitat_score, calculate_bear_score, calculate_hawk_score
+from cascadia_ai.score import calculate_habitat_score, calculate_bear_score, calculate_hawk_score, calculate_fox_score
 from cascadia_ai.tiles import Tile
 
 
@@ -112,3 +112,29 @@ def test_hawk_score():
 
     env.place_wildlife((0, 8), Wildlife.HAWK)
     assert calculate_hawk_score(env.wildlife) == 26
+
+
+def test_fox_scoring():
+    env = make_env([((q, r), "MMbeshf", 0) for q in range(10) for r in range(10)])
+    assert calculate_fox_score(env.wildlife) == 0
+
+    env.place_wildlife((5, 5), Wildlife.FOX)
+    assert calculate_fox_score(env.wildlife) == 0
+
+    env.place_wildlife((6, 5), Wildlife.HAWK)
+    assert calculate_fox_score(env.wildlife) == 1
+
+    env.place_wildlife((5, 6), Wildlife.HAWK)
+    assert calculate_fox_score(env.wildlife) == 1
+
+    env.place_wildlife((4, 6), Wildlife.BEAR)
+    assert calculate_fox_score(env.wildlife) == 2
+
+    env.place_wildlife((4, 5), Wildlife.SALMON)
+    assert calculate_fox_score(env.wildlife) == 3
+
+    env.place_wildlife((5, 4), Wildlife.ELK)
+    assert calculate_fox_score(env.wildlife) == 4
+
+    env.place_wildlife((6, 4), Wildlife.FOX)
+    assert calculate_fox_score(env.wildlife) == 5 + 3

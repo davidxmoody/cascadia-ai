@@ -94,12 +94,23 @@ def calculate_hawk_score(wildlife: HexGrid[Wildlife]):
 
 
 def calculate_fox_score(wildlife: HexGrid[Wildlife]):
-    return 0
+    fox_score = 0
+    foxes = {p for p, w in wildlife.items() if w == Wildlife.FOX}
+
+    for p in foxes:
+        unique_adjacent = {w for _, w in wildlife.adjacent(p)}
+        fox_score += len(unique_adjacent)
+
+    return fox_score
 
 
 def calculate_wildlife_score(wildlife: HexGrid[Wildlife]):
     return {
-        Wildlife.BEAR: calculate_bears_score(wildlife),
+        Wildlife.BEAR: calculate_bear_score(wildlife),
+        Wildlife.ELK: calculate_elk_score(wildlife),
+        Wildlife.SALMON: calculate_salmon_score(wildlife),
+        Wildlife.HAWK: calculate_hawk_score(wildlife),
+        Wildlife.FOX: calculate_fox_score(wildlife),
     }
 
 
