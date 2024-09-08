@@ -2,6 +2,7 @@ from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import Environment, RotatedTile
 from cascadia_ai.hex_grid import HexGrid
 from cascadia_ai.score import (
+    calculate_elk_score,
     calculate_habitat_score,
     calculate_bear_score,
     calculate_hawk_score,
@@ -86,6 +87,11 @@ def test_bear_score():
     env.place_wildlife((0, 10), Wildlife.BEAR)
     env.place_wildlife((1, 10), Wildlife.BEAR)
     assert calculate_bear_score(env.wildlife) == 27
+
+
+def test_elk_score():
+    env = make_env([((q, r), "MMe", 0) for q in range(10) for r in range(10)])
+    assert calculate_elk_score(env.wildlife) == 0
 
 
 def test_salmon_score():

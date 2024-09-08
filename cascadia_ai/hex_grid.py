@@ -23,6 +23,9 @@ class HexGrid(Generic[T]):
             raise KeyError("Cannot overwrite existing data")
         self._data[key] = value
 
+    def keys(self):
+        return self._data.keys()
+
     def items(self):
         return self._data.items()
 
@@ -35,6 +38,9 @@ class HexGrid(Generic[T]):
             apos = (q + dq, r + dr)
             if apos in self._data:
                 yield (apos, self._data[apos])
+
+    def filter(self, value: T):
+        return HexGrid({p: v for p, v in self._data.items() if v == value})
 
     def __len__(self):
         return len(self._data)

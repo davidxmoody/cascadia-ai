@@ -1,4 +1,3 @@
-from typing import Counter
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import RotatedTile
 from cascadia_ai.game_state import GameState
@@ -54,93 +53,78 @@ def calculate_habitat_score(tiles: HexGrid[RotatedTile]):
     return score
 
 
-def calculate_bear_score(wildlife: HexGrid[Wildlife]):
-    bears = {p for p, w in wildlife.items() if w == Wildlife.BEAR}
-    potential_pairs = Counter[tuple[HexPosition, HexPosition]]()
-
-    for p in bears:
-        adjacent = [a for a, _ in wildlife.adjacent(p) if a in bears]
-        if len(adjacent) == 1:
-            p1, p2 = sorted([p, adjacent[0]])
-            potential_pairs[(p1, p2)] += 1
-
-    num_real_pairs = sum(1 for count in potential_pairs.values() if count == 2)
-
-    bear_scores = [0, 4, 11, 19, 27]
-
-    return bear_scores[min(num_real_pairs, len(bear_scores) - 1)]
+def score_lookup(score_table: list[int], value: int):
+    return score_table[min(value, len(score_table) - 1)]
 
 
-def calculate_elk_score(wildlife: HexGrid[Wildlife]):
-    return 0
-
-
-def calculate_salmon_score(wildlife: HexGrid[Wildlife]):
-    salmon_scores = [0, 2, 5, 8, 12, 16, 20, 25]
-
-    total_salmon_score = 0
-
-    salmon = {p for p, w in wildlife.items() if w == Wildlife.SALMON}
-
+def find_groups(grid: HexGrid[Wildlife]):
     visited = set[HexPosition]()
+    groups = list[set[HexPosition]]()
 
-    for starting_point in salmon:
-        if starting_point in visited:
+    for p in grid.keys():
+        if p in visited:
             continue
 
-        valid_run = True
-        current_run = set[HexPosition]()
-        unexplored = {starting_point}
+        current_group = set[HexPosition]()
+        unexplored = {p}
 
         while len(unexplored):
             next = unexplored.pop()
-            adjacent = {p for p, w in wildlife.adjacent(next) if w == Wildlife.SALMON}
-            if len(adjacent) > 2:
-                valid_run = False
-            current_run.add(next)
-            unexplored.update(adjacent - current_run)
+            current_group.add(next)
+            adjacent = set(a for a, _ in grid.adjacent(next))
+            unexplored |= adjacent - current_group
 
-        visited.update(current_run)
+        visited.update(current_group)
+        groups.append(current_group)
 
+    return groups
+
+
+def calculate_bear_score(wgrid: HexGrid[Wildlife]):
+    groups = find_groups(wgrid.filter(Wildlife.BEAR))
+    num_valid_groups = sum(len(g) == 2 for g in groups)
+    return score_lookup([0, 4, 11, 19, 27], num_valid_groups)
+
+
+def calculate_elk_score(wgrid: HexGrid[Wildlife]):
+    return 0
+
+
+def calculate_salmon_score(wgrid: HexGrid[Wildlife]):
+    salmon_score = 0
+
+    salmon = wgrid.filter(Wildlife.SALMON)
+
+    for group in find_groups(salmon):
+        valid_run = all(len(list(salmon.adjacent(p))) <= 2 for p in group)
         if valid_run:
-            run_length = len(current_run)
-            total_salmon_score += salmon_scores[min(run_length, len(salmon_scores) - 1)]
+            salmon_score += score_lookup([0, 2, 5, 8, 12, 16, 20, 25], len(group))
 
-    return total_salmon_score
-
-
-def calculate_hawk_score(wildlife: HexGrid[Wildlife]):
-    hawks = {p for p, w in wildlife.items() if w == Wildlife.HAWK}
-    num_isolated_hawks = 0
-
-    for p in hawks:
-        num_adjacent_hawks = sum(w == Wildlife.HAWK for _, w in wildlife.adjacent(p))
-        if num_adjacent_hawks == 0:
-            num_isolated_hawks += 1
-
-    hawk_scores = [0, 2, 5, 8, 11, 14, 18, 22, 26]
-
-    return hawk_scores[min(num_isolated_hawks, len(hawk_scores) - 1)]
+    return salmon_score
 
 
-def calculate_fox_score(wildlife: HexGrid[Wildlife]):
+def calculate_hawk_score(wgrid: HexGrid[Wildlife]):
+    groups = find_groups(wgrid.filter(Wildlife.HAWK))
+    num_valid_groups = sum(len(g) == 1 for g in groups)
+    return score_lookup([0, 2, 5, 8, 11, 14, 18, 22, 26], num_valid_groups)
+
+
+def calculate_fox_score(wgrid: HexGrid[Wildlife]):
     fox_score = 0
-    foxes = {p for p, w in wildlife.items() if w == Wildlife.FOX}
-
-    for p in foxes:
-        unique_adjacent = {w for _, w in wildlife.adjacent(p)}
-        fox_score += len(unique_adjacent)
-
+    for p, w in wgrid.items():
+        if w == Wildlife.FOX:
+            unique_adjacent = {w2 for _, w2 in wgrid.adjacent(p)}
+            fox_score += len(unique_adjacent)
     return fox_score
 
 
-def calculate_wildlife_score(wildlife: HexGrid[Wildlife]):
+def calculate_wildlife_score(wgrid: HexGrid[Wildlife]):
     return {
-        Wildlife.BEAR: calculate_bear_score(wildlife),
-        Wildlife.ELK: calculate_elk_score(wildlife),
-        Wildlife.SALMON: calculate_salmon_score(wildlife),
-        Wildlife.HAWK: calculate_hawk_score(wildlife),
-        Wildlife.FOX: calculate_fox_score(wildlife),
+        Wildlife.BEAR: calculate_bear_score(wgrid),
+        Wildlife.ELK: calculate_elk_score(wgrid),
+        Wildlife.SALMON: calculate_salmon_score(wgrid),
+        Wildlife.HAWK: calculate_hawk_score(wgrid),
+        Wildlife.FOX: calculate_fox_score(wgrid),
     }
 
 
