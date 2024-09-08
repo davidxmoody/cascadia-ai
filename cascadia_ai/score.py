@@ -76,7 +76,37 @@ def calculate_elk_score(wildlife: HexGrid[Wildlife]):
 
 
 def calculate_salmon_score(wildlife: HexGrid[Wildlife]):
-    return 0
+    salmon_scores = [0, 2, 5, 8, 12, 16, 20, 25]
+
+    total_salmon_score = 0
+
+    salmon = {p for p, w in wildlife.items() if w == Wildlife.SALMON}
+
+    visited = set[HexPosition]()
+
+    for starting_point in salmon:
+        if starting_point in visited:
+            continue
+
+        valid_run = True
+        current_run = set[HexPosition]()
+        unexplored = {starting_point}
+
+        while len(unexplored):
+            next = unexplored.pop()
+            adjacent = {p for p, w in wildlife.adjacent(next) if w == Wildlife.SALMON}
+            if len(adjacent) > 2:
+                valid_run = False
+            current_run.add(next)
+            unexplored.update(adjacent - current_run)
+
+        visited.update(current_run)
+
+        if valid_run:
+            run_length = len(current_run)
+            total_salmon_score += salmon_scores[min(run_length, len(salmon_scores) - 1)]
+
+    return total_salmon_score
 
 
 def calculate_hawk_score(wildlife: HexGrid[Wildlife]):

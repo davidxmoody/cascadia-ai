@@ -1,7 +1,13 @@
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import Environment, RotatedTile
 from cascadia_ai.hex_grid import HexGrid
-from cascadia_ai.score import calculate_habitat_score, calculate_bear_score, calculate_hawk_score, calculate_fox_score
+from cascadia_ai.score import (
+    calculate_habitat_score,
+    calculate_bear_score,
+    calculate_hawk_score,
+    calculate_fox_score,
+    calculate_salmon_score,
+)
 from cascadia_ai.tiles import Tile
 
 
@@ -80,6 +86,36 @@ def test_bear_score():
     env.place_wildlife((0, 10), Wildlife.BEAR)
     env.place_wildlife((1, 10), Wildlife.BEAR)
     assert calculate_bear_score(env.wildlife) == 27
+
+
+def test_salmon_score():
+    env = make_env([((q, r), "MMs", 0) for q in range(10) for r in range(10)])
+    assert calculate_salmon_score(env.wildlife) == 0
+
+    env.place_wildlife((0, 0), Wildlife.SALMON)
+    assert calculate_salmon_score(env.wildlife) == 2
+
+    env.place_wildlife((1, 0), Wildlife.SALMON)
+    assert calculate_salmon_score(env.wildlife) == 5
+
+    env.place_wildlife((1, 1), Wildlife.SALMON)
+    assert calculate_salmon_score(env.wildlife) == 8
+
+    env.place_wildlife((2, 0), Wildlife.SALMON)
+    assert calculate_salmon_score(env.wildlife) == 0
+
+    env.place_wildlife((4, 0), Wildlife.SALMON)
+    assert calculate_salmon_score(env.wildlife) == 2
+
+    env.place_wildlife((6, 0), Wildlife.SALMON)
+    assert calculate_salmon_score(env.wildlife) == 2 + 2
+
+    for i in range(1, 7):
+        env.place_wildlife((6, i), Wildlife.SALMON)
+    assert calculate_salmon_score(env.wildlife) == 2 + 25
+
+    env.place_wildlife((6, 7), Wildlife.SALMON)
+    assert calculate_salmon_score(env.wildlife) == 2 + 25
 
 
 def test_hawk_score():
