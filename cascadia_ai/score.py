@@ -1,3 +1,4 @@
+from typing import Counter
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import RotatedTile
 from cascadia_ai.game_state import GameState
@@ -53,8 +54,25 @@ def calculate_habitat_score(tiles: HexGrid[RotatedTile]):
     return score
 
 
+def calculate_bears_score(wildlife: HexGrid[Wildlife]):
+    bears = {p for p, w in wildlife.items() if w == Wildlife.BEAR}
+    potential_pairs = Counter[tuple[HexPosition, HexPosition]]()
+
+    for p in bears:
+        adjacent = [a for a, _ in wildlife.adjacent(p) if a in bears]
+        if len(adjacent) == 1:
+            p1, p2 = sorted([p, adjacent[0]])
+            potential_pairs[(p1, p2)] += 1
+
+    num_real_pairs = sum(1 for count in potential_pairs.values() if count == 2)
+
+    return [0, 4, 11, 19, 27][min(num_real_pairs, 4)]
+
+
 def calculate_wildlife_score(wildlife: HexGrid[Wildlife]):
-    return {}
+    return {
+        Wildlife.BEAR: calculate_bears_score(wildlife),
+    }
 
 
 def calculate_score(gs: GameState):
