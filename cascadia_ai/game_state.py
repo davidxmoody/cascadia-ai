@@ -130,6 +130,10 @@ class GameState:
         if move.wildlife_position is not None:
             self.env.place_wildlife(move.wildlife_position, wildlife)
 
+            wildlife_target = self.env.tiles[move.wildlife_position]
+            if wildlife_target is not None and wildlife_target.tile.nature_token_reward:
+                self.nature_tokens += 1
+
         self.tile_supply.pop(0)
         self.wildlife_bag.pop(0)
 
