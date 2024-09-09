@@ -1,3 +1,4 @@
+from copy import deepcopy
 from random import Random
 from typing import NamedTuple
 from cascadia_ai.enums import Wildlife
@@ -54,6 +55,20 @@ class GameState:
     @property
     def turns_remaining(self):
         return 23 - len(self.env.tiles)
+
+    def print(self):
+        print(f"Seed: {self._seed}")
+        print(f"Turns remaining: {self.turns_remaining}")
+        print()
+
+        print("Tiles/wildlife:")
+        for i in range(4):
+            print(
+                f"{i}: {self.tile_supply[i]}{" " * (3 - len(self.tile_supply[i].wildlife_slots))} / {self.wildlife_bag[i]}"
+            )
+        print()
+
+        self.env.print()
 
     def validate_move(self, move: Move):
         if self.turns_remaining <= 0:
@@ -119,22 +134,26 @@ class GameState:
     def make_move(self, move: Move):
         self.validate_move(move)
 
+        new_gs = deepcopy(self)
+
         if move.tile_index != move.wildlife_index:
-            self.nature_tokens -= 1
+            new_gs.nature_tokens -= 1
 
-        tile = self.tile_supply.pop(move.tile_index)
-        wildlife = self.wildlife_bag.pop(move.wildlife_index)
+        tile = new_gs.tile_supply.pop(move.tile_index)
+        wildlife = new_gs.wildlife_bag.pop(move.wildlife_index)
 
-        self.env.place_tile(move.tile_position, tile, move.tile_rotation)
+        new_gs.env.place_tile(move.tile_position, tile, move.tile_rotation)
 
         if move.wildlife_position is not None:
-            self.env.place_wildlife(move.wildlife_position, wildlife)
+            new_gs.env.place_wildlife(move.wildlife_position, wildlife)
 
-            wildlife_target = self.env.tiles[move.wildlife_position]
+            wildlife_target = new_gs.env.tiles[move.wildlife_position]
             if wildlife_target is not None and wildlife_target.tile.nature_token_reward:
-                self.nature_tokens += 1
+                new_gs.nature_tokens += 1
 
-        self.tile_supply.pop(0)
-        self.wildlife_bag.pop(0)
+        new_gs.tile_supply.pop(0)
+        new_gs.wildlife_bag.pop(0)
 
-        self._check_overpopulation()
+        new_gs._check_overpopulation()
+
+        return new_gs

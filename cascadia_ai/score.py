@@ -170,7 +170,7 @@ def calculate_wildlife_score(wgrid: HexGrid[Wildlife]):
 
 
 def calculate_score(gs: GameState):
-    ws = calculate_wildlife_score(gs.environment.wildlife)
-    hs = calculate_habitat_score(gs.environment.tiles)
+    ws = calculate_wildlife_score(gs.env.wildlife)
+    hs = calculate_habitat_score(gs.env.tiles)
 
     return sum(ws.values()) + sum(hs.values()) + gs.nature_tokens
