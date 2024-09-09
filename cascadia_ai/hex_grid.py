@@ -23,6 +23,9 @@ class HexGrid(Generic[T]):
             raise KeyError("Cannot overwrite existing data")
         self._data[key] = value
 
+    def __contains__(self, key: HexPosition):
+        return key in self._data
+
     def keys(self):
         return self._data.keys()
 
@@ -32,12 +35,23 @@ class HexGrid(Generic[T]):
     def copy(self):
         return HexGrid(self._data.copy())
 
-    def adjacent(self, key: HexPosition):
+    def adjacent_positions(self, key: HexPosition):
         q, r = key
         for dq, dr in hex_steps:
-            apos = (q + dq, r + dr)
-            if apos in self._data:
-                yield (apos, self._data[apos])
+            yield (q + dq, r + dr)
+
+    def adjacent(self, key: HexPosition):
+        for p in self.adjacent_positions(key):
+            if p in self._data:
+                yield (p, self._data[p])
+
+    def all_empty_adjacent(self):
+        result = set[HexPosition]()
+        for p in self.keys():
+            for a in self.adjacent_positions(p):
+                if a not in self._data:
+                    result.add(a)
+        return result
 
     def filter(self, value: T):
         return HexGrid({p: v for p, v in self._data.items() if v == value})

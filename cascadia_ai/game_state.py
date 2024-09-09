@@ -55,7 +55,7 @@ class GameState:
     def turns_remaining(self):
         return 23 - len(self.environment.tiles)
 
-    def make_move(self, move: Move):
+    def validate_move(self, move: Move):
         if self.turns_remaining <= 0:
             raise Exception("No turns remaining")
 
@@ -87,6 +87,37 @@ class GameState:
                     raise Exception("Wildlife must be placed on a tile")
                 if wildlife not in wildlife_target.tile.wildlife_slots:
                     raise Exception("Target tile does not accept this wildlife type")
+
+    def available_moves(self):
+        for tile_index in range(4):
+            tile = self.tile_supply[tile_index]
+
+            wildlife_index = tile_index  # TODO add nature token option
+            wildlife = self.wildlife_bag[wildlife_index]
+
+            for tile_position in self.environment.tiles.all_empty_adjacent():
+                wildlife_positions = {None} | {
+                    p
+                    for p, rtile in self.environment.tiles.items()
+                    if wildlife in rtile.tile.wildlife_slots
+                    and p not in self.environment.wildlife
+                }
+
+                if wildlife in tile.wildlife_slots:
+                    wildlife_positions.add(tile_position)
+
+                for wildlife_position in wildlife_positions:
+                    for rotation in range(1 if tile.single_habitat else 6):
+                        yield Move(
+                            tile_index,
+                            tile_position,
+                            rotation,
+                            wildlife_index,
+                            wildlife_position,
+                        )
+
+    def make_move(self, move: Move):
+        self.validate_move(move)
 
         if move.tile_index != move.wildlife_index:
             self.nature_tokens -= 1

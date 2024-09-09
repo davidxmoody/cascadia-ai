@@ -13,8 +13,13 @@ class Tile(NamedTuple):
         wildlife_slots = frozenset(Wildlife(w) for w in ws)
         return cls(habitats, wildlife_slots)
 
-    def nature_token_reward(self):
+    @property
+    def single_habitat(self):
         return self.habitats[0] == self.habitats[1]
+
+    @property
+    def nature_token_reward(self):
+        return self.single_habitat
 
     def __repr__(self):
         h1, h2 = (h.value for h in self.habitats)
