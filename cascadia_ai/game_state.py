@@ -21,14 +21,14 @@ class GameState:
     wildlife_bag: list[Wildlife]
     tile_supply: list[Tile]
 
-    environment: Environment
+    env: Environment
     nature_tokens: int = 0
 
     def __init__(self, seed: int):
         self._seed = seed
         self._rand = Random(seed)
 
-        self.environment = Environment(self._rand.choice(starting_tiles))
+        self.env = Environment(self._rand.choice(starting_tiles))
 
         self.tile_supply = list(tiles)
         self._rand.shuffle(self.tile_supply)
@@ -53,7 +53,7 @@ class GameState:
 
     @property
     def turns_remaining(self):
-        return 23 - len(self.environment.tiles)
+        return 23 - len(self.env.tiles)
 
     def validate_move(self, move: Move):
         if self.turns_remaining <= 0:
@@ -68,10 +68,10 @@ class GameState:
         if move.tile_index != move.wildlife_index and self.nature_tokens <= 0:
             raise Exception("Cannot use mismatched pair without nature tokens")
 
-        if self.environment.tiles[move.tile_position] is not None:
+        if self.env.tiles[move.tile_position] is not None:
             raise Exception("Tile already exists at given position")
 
-        if len(list(self.environment.tiles.adjacent(move.tile_position))) == 0:
+        if len(list(self.env.tiles.adjacent(move.tile_position))) == 0:
             raise Exception("Tile must be placed adjacent to another tile")
 
         if move.wildlife_position is not None:
@@ -80,9 +80,9 @@ class GameState:
                 if wildlife not in self.tile_supply[move.tile_index].wildlife_slots:
                     raise Exception("Target tile does not accept this wildlife type")
             else:
-                if self.environment.wildlife[move.wildlife_position] is not None:
+                if self.env.wildlife[move.wildlife_position] is not None:
                     raise Exception("Wildlife already exists at given position")
-                wildlife_target = self.environment.tiles[move.wildlife_position]
+                wildlife_target = self.env.tiles[move.wildlife_position]
                 if wildlife_target is None:
                     raise Exception("Wildlife must be placed on a tile")
                 if wildlife not in wildlife_target.tile.wildlife_slots:
@@ -95,12 +95,12 @@ class GameState:
             wildlife_index = tile_index  # TODO add nature token option
             wildlife = self.wildlife_bag[wildlife_index]
 
-            for tile_position in self.environment.tiles.all_empty_adjacent():
+            for tile_position in self.env.tiles.all_empty_adjacent():
                 wildlife_positions = {None} | {
                     p
-                    for p, rtile in self.environment.tiles.items()
+                    for p, rtile in self.env.tiles.items()
                     if wildlife in rtile.tile.wildlife_slots
-                    and p not in self.environment.wildlife
+                    and p not in self.env.wildlife
                 }
 
                 if wildlife in tile.wildlife_slots:
@@ -125,10 +125,10 @@ class GameState:
         tile = self.tile_supply.pop(move.tile_index)
         wildlife = self.wildlife_bag.pop(move.wildlife_index)
 
-        self.environment.place_tile(move.tile_position, tile, move.tile_rotation)
+        self.env.place_tile(move.tile_position, tile, move.tile_rotation)
 
         if move.wildlife_position is not None:
-            self.environment.place_wildlife(move.wildlife_position, wildlife)
+            self.env.place_wildlife(move.wildlife_position, wildlife)
 
         self.tile_supply.pop(0)
         self.wildlife_bag.pop(0)
