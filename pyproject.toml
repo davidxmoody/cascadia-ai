@@ -8,6 +8,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 ipython = "^8.27.0"
+rich = "^13.8.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"

@@ -25,9 +25,13 @@ class GameState:
     env: Environment
     nature_tokens: int = 0
 
+    history: list[Move]
+
     def __init__(self, seed: int):
         self._seed = seed
         self._rand = Random(seed)
+
+        self.history = []
 
         self.env = Environment(self._rand.choice(starting_tiles))
 
@@ -55,20 +59,6 @@ class GameState:
     @property
     def turns_remaining(self):
         return 23 - len(self.env.tiles)
-
-    def print(self):
-        print(f"Seed: {self._seed}")
-        print(f"Turns remaining: {self.turns_remaining}")
-        print()
-
-        print("Tiles/wildlife:")
-        for i in range(4):
-            print(
-                f"{i}: {self.tile_supply[i]}{" " * (3 - len(self.tile_supply[i].wildlife_slots))} / {self.wildlife_bag[i]}"
-            )
-        print()
-
-        self.env.print()
 
     def validate_move(self, move: Move):
         if self.turns_remaining <= 0:
@@ -155,5 +145,7 @@ class GameState:
         new_gs.wildlife_bag.pop(0)
 
         new_gs._check_overpopulation()
+
+        new_gs.history.append(move)
 
         return new_gs
