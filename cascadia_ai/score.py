@@ -18,37 +18,32 @@ def share_edge(
     return edge1 == edge2 == habitat
 
 
-def calculate_habitat_score(tiles: HexGrid[RotatedTile]):
-    score: dict[Habitat, int] = {}
+def calculate_habitat_score(habitat: Habitat, tiles: HexGrid[RotatedTile]):
+    groups: dict[HexPosition, set[HexPosition]] = {}
 
-    for habitat in Habitat:
-        groups: dict[HexPosition, set[HexPosition]] = {}
+    for pos, rtile in tiles.items():
+        if habitat not in rtile.tile.habitats:
+            continue
 
-        for pos, rtile in tiles.items():
-            if habitat not in rtile.tile.habitats:
-                continue
+        groups[pos] = {pos} | {
+            apos
+            for apos, artile in tiles.adjacent(pos)
+            if share_edge(habitat, pos, rtile, apos, artile)
+        }
 
-            groups[pos] = {pos} | {
-                apos
-                for apos, artile in tiles.adjacent(pos)
-                if share_edge(habitat, pos, rtile, apos, artile)
-            }
+    for pos in list(groups.keys()):
+        merged = False
+        for other_pos, other_group in groups.items():
+            if pos != other_pos and pos in other_group:
+                groups[other_pos] = other_group | groups[pos]
+                merged = True
+        if merged:
+            del groups[pos]
 
-        for pos in list(groups.keys()):
-            merged = False
-            for other_pos, other_group in groups.items():
-                if pos != other_pos and pos in other_group:
-                    groups[other_pos] = other_group | groups[pos]
-                    merged = True
-            if merged:
-                del groups[pos]
+    score = 0 if len(groups) == 0 else max(len(group) for group in groups.values())
 
-        score[habitat] = (
-            0 if len(groups) == 0 else max(len(group) for group in groups.values())
-        )
-
-        if score[habitat] >= 7:
-            score[habitat] += 2
+    if score >= 7:
+        score += 2
 
     return score
 
@@ -159,18 +154,20 @@ def calculate_fox_score(wgrid: HexGrid[Wildlife]):
     return fox_score
 
 
-def calculate_wildlife_score(wgrid: HexGrid[Wildlife]):
-    return {
-        Wildlife.BEAR: calculate_bear_score(wgrid),
-        Wildlife.ELK: calculate_elk_score(wgrid),
-        Wildlife.SALMON: calculate_salmon_score(wgrid),
-        Wildlife.HAWK: calculate_hawk_score(wgrid),
-        Wildlife.FOX: calculate_fox_score(wgrid),
+def calculate_score(gs: GameState):
+    wildlife = {
+        Wildlife.BEAR.value: calculate_bear_score(gs.env.wildlife),
+        Wildlife.ELK.value: calculate_elk_score(gs.env.wildlife),
+        Wildlife.SALMON.value: calculate_salmon_score(gs.env.wildlife),
+        Wildlife.HAWK.value: calculate_hawk_score(gs.env.wildlife),
+        Wildlife.FOX.value: calculate_fox_score(gs.env.wildlife),
     }
 
+    habitat = {h.value: calculate_habitat_score(h, gs.env.tiles) for h in Habitat}
 
-def calculate_score(gs: GameState):
-    ws = calculate_wildlife_score(gs.env.wildlife)
-    hs = calculate_habitat_score(gs.env.tiles)
-
-    return sum(ws.values()) + sum(hs.values()) + gs.nature_tokens
+    return {
+        "wildlife": wildlife,
+        "habitat": habitat,
+        "nature_tokens": gs.nature_tokens,
+        "total": sum(wildlife.values()) + sum(habitat.values()) + gs.nature_tokens,
+    }
