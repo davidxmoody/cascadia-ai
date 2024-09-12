@@ -12,7 +12,7 @@ def main(iterations=100):
         while gs.turns_remaining > 0:
             move = max(
                 list(gs.available_moves()),
-                key=lambda m: calculate_score(gs.make_move(m)),
+                key=lambda m: calculate_score(gs.make_move(m))["total"],
             )
             gs = gs.make_move(move)
 
