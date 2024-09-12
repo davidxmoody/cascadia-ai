@@ -104,18 +104,12 @@ def print_env(env: Environment):
 
 
 def print_gs(gs: GameState):
-    console.print(f"Seed: {gs._seed}")
-    console.print(f"Turns remaining: {gs.turns_remaining}")
-    console.print()
+    print(f"Seed: {gs._seed}")
+    print(f"Turns remaining: {gs.turns_remaining}")
+    print()
 
-    console.print("Tiles/wildlife:")
     for i in range(4):
-        console.print(
-            f"{i}: {gs.tile_supply[i]}{" " * (3 - len(gs.tile_supply[i].wildlife_slots))} / {gs.wildlife_bag[i]}"
-        )
-    console.print()
+        print(f"{i}: {str(gs.tile_supply[i]).ljust(13)} / {gs.wildlife_bag[i]}")
+    print()
 
     print_env(gs.env)
-
-
-pe()

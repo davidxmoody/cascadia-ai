@@ -1,7 +1,7 @@
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Tuple
 
 
-type HexPosition = tuple[int, int]
+HexPosition = Tuple[int, int]
 
 hex_steps: list[tuple[int, int]] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)]
 

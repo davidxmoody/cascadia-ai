@@ -6,9 +6,9 @@ authors = ["David Moody <david@davidxmoody.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
-ipython = "^8.27.0"
+python = "^3.11"
 rich = "^13.8.0"
+ipython = "^8.27.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
