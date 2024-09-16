@@ -1,3 +1,4 @@
+from typing import NamedTuple
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import RotatedTile
 from cascadia_ai.game_state import GameState
@@ -154,6 +155,13 @@ def calculate_fox_score(wgrid: HexGrid[Wildlife]):
     return fox_score
 
 
+class Score(NamedTuple):
+    wildlife: dict[str, int]
+    habitat: dict[str, int]
+    nature_tokens: int
+    total: int
+
+
 def calculate_score(gs: GameState):
     wildlife = {
         Wildlife.BEAR.value: calculate_bear_score(gs.env.wildlife),
@@ -165,9 +173,9 @@ def calculate_score(gs: GameState):
 
     habitat = {h.value: calculate_habitat_score(h, gs.env.tiles) for h in Habitat}
 
-    return {
-        "wildlife": wildlife,
-        "habitat": habitat,
-        "nature_tokens": gs.nature_tokens,
-        "total": sum(wildlife.values()) + sum(habitat.values()) + gs.nature_tokens,
-    }
+    return Score(
+        wildlife=wildlife,
+        habitat=habitat,
+        nature_tokens=gs.nature_tokens,
+        total=sum(wildlife.values()) + sum(habitat.values()) + gs.nature_tokens,
+    )
