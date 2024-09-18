@@ -64,7 +64,7 @@ def generate_training_data(iterations=100):
 
         while (gs := gamestates[-1]).turns_remaining > 0:
             all_moves = list(gs.available_moves())
-            moves = sample(all_moves, min(20, len(all_moves)))
+            moves = sample(all_moves, min(50, len(all_moves)))
             chosen_move = max(
                 moves, key=lambda m: calculate_score(gs.make_move(m)).total
             )
@@ -77,7 +77,7 @@ def generate_training_data(iterations=100):
 
 
 # %%
-training_data = list(generate_training_data(100))
+training_data = list(generate_training_data(1000))
 
 
 # %%
@@ -111,7 +111,7 @@ class QNetwork(L.LightningModule):
         return x
 
     def configure_optimizers(self):
-        return Adam(self.parameters(), lr=0.001)
+        return Adam(self.parameters(), lr=0.005)
 
     def training_step(self, batch):  # type: ignore
         out = self(batch.x, batch.edge_index, batch.batch)
@@ -133,12 +133,12 @@ loader = DataLoader(training_data, batch_size=100, shuffle=True)
 
 model = QNetwork().to("mps")
 
-trainer = L.Trainer(max_epochs=10)
+trainer = L.Trainer(max_epochs=50)
 trainer.fit(model, loader)
 
 
 # %%
-test_data = list(generate_training_data(100))
+test_data = list(generate_training_data(200))
 
 
 # %%
