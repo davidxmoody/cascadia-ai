@@ -37,13 +37,16 @@ def get_node_features(gs: GameState, p: HexPosition) -> list[float]:
     return [float(b) for b in bools]
 
 
+# %%
+
+
 def gs_to_data(gs: GameState, final_score: int):
     positions = list(gs.env.tiles.keys())
     nodes = list[list[float]]()
     adjacency = list[tuple[int, int]]()
 
     for pi, p in enumerate(positions):
-        nodes.append(get_node_features(gs, p))
+        nodes.append(get_node_features_v2(gs, p))
 
         for a, _ in gs.env.tiles.adjacent(p):
             ai = positions.index(a)
@@ -64,7 +67,7 @@ def generate_training_data(iterations=100):
 
         while (gs := gamestates[-1]).turns_remaining > 0:
             all_moves = list(gs.available_moves())
-            moves = sample(all_moves, min(50, len(all_moves)))
+            moves = sample(all_moves, min(20, len(all_moves)))
             chosen_move = max(
                 moves, key=lambda m: calculate_score(gs.make_move(m)).total
             )
@@ -77,11 +80,11 @@ def generate_training_data(iterations=100):
 
 
 # %%
-training_data = list(generate_training_data(1000))
+training_data = list(generate_training_data(500))
 
 
 # %%
-num_node_features = 41
+num_node_features = 23
 batch_size = 100
 
 
@@ -93,20 +96,15 @@ class QNetwork(L.LightningModule):
         self.fc = nn.Linear(32, 1)
 
     def forward(self, x, edge_index, batch):  # type: ignore
-        # print("forward", x, edge_index, batch)
         x = self.conv1(x, edge_index)
         x = torch.relu(x)
 
-        # print("forward 2", x)
         x = self.conv2(x, edge_index)
         x = torch.relu(x)
 
-        # print("forward 3", x)
         x = global_mean_pool(x, batch)
 
-        # print("forward 4", x)
         x = self.fc(x)
-        # print("forward 5", x)
 
         return x
 
@@ -129,7 +127,7 @@ class QNetwork(L.LightningModule):
 
 
 # %%
-loader = DataLoader(training_data, batch_size=100, shuffle=True)
+loader = DataLoader(training_data, batch_size=100, shuffle=True, num_workers=7)
 
 model = QNetwork().to("mps")
 
@@ -170,3 +168,61 @@ average_loss = total_loss / num_batches
 print(f"Average test loss: {average_loss:.4f}")
 
 print(results)
+
+
+# %%
+def get_node_features_v2(gs: GameState, p: HexPosition) -> list[float]:
+    rtile = gs.env.tiles[p]
+    if rtile is None:
+        raise Exception("Missing tile")
+
+    tile = rtile.tile
+    wildlife = gs.env.wildlife[p]
+
+    num_matching_edges = 0
+    for ap, art in gs.env.tiles.adjacent(p):
+        q1, r1 = p
+        q2, r2 = ap
+        edge1 = rtile.get_edge((q2 - q1, r2 - r1))
+        edge2 = art.get_edge((q1 - q2, r1 - r2))
+        if edge1 == edge2:
+            num_matching_edges += 1
+
+    features: list[float] = [
+        float(num_matching_edges),
+        float(tile.single_habitat),
+        float(tile.nature_token_reward and wildlife is None),
+    ]
+
+    for w in [Wildlife.BEAR, Wildlife.ELK, Wildlife.SALMON, Wildlife.HAWK]:
+        features.extend(
+            [
+                float(wildlife == w),
+                float(wildlife is None and w in tile.wildlife_slots),
+                float(sum(aw == w for _, aw in gs.env.wildlife.adjacent(p))),
+                float(
+                    sum(
+                        gs.env.wildlife[ap] is None and w in art.tile.wildlife_slots
+                        for ap, art in gs.env.tiles.adjacent(p)
+                    )
+                ),
+            ]
+        )
+
+    adjacent_unique = {w for _, w in gs.env.wildlife.adjacent(p)}
+    adjacent_empty_slots = {
+        w
+        for ap, art in gs.env.tiles.adjacent(p)
+        for w in art.tile.wildlife_slots
+        if gs.env.wildlife[ap] is None
+    }
+    features.extend(
+        [
+            float(wildlife == Wildlife.FOX),
+            float(wildlife is None and Wildlife.FOX in tile.wildlife_slots),
+            float(len(adjacent_unique)),
+            float(len(adjacent_empty_slots)),
+        ]
+    )
+
+    return features
