@@ -26,6 +26,8 @@ class Tile(NamedTuple):
         ws = "".join(w.value for w in self.wildlife_slots)
         return f'Tile("{h1}{h2}{ws}")'
 
+    # TODO refactor to include a default rotation
+
 
 tile_defs = [
     "FFb",

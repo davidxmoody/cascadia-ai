@@ -8,9 +8,8 @@ from torch.optim.adam import Adam
 from cascadia_ai.enums import Habitat, Wildlife
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
-
 from cascadia_ai.game_state import GameState
-from cascadia_ai.hex_grid import HexPosition
+from cascadia_ai.environments import HexPosition
 from cascadia_ai.score import calculate_score
 
 
@@ -48,7 +47,7 @@ def gs_to_data(gs: GameState, final_score: int):
     for pi, p in enumerate(positions):
         nodes.append(get_node_features_v2(gs, p))
 
-        for a, _ in gs.env.tiles.adjacent(p):
+        for a, _ in gs.env.adjacent_tiles(p):
             ai = positions.index(a)
             adjacency.append((pi, ai))
 
@@ -180,7 +179,7 @@ def get_node_features_v2(gs: GameState, p: HexPosition) -> list[float]:
     wildlife = gs.env.wildlife[p]
 
     num_matching_edges = 0
-    for ap, art in gs.env.tiles.adjacent(p):
+    for ap, art in gs.env.adjacent_tiles(p):
         q1, r1 = p
         q2, r2 = ap
         edge1 = rtile.get_edge((q2 - q1, r2 - r1))
@@ -199,20 +198,20 @@ def get_node_features_v2(gs: GameState, p: HexPosition) -> list[float]:
             [
                 float(wildlife == w),
                 float(wildlife is None and w in tile.wildlife_slots),
-                float(sum(aw == w for _, aw in gs.env.wildlife.adjacent(p))),
+                float(sum(aw == w for _, aw in gs.env.adjacent_wildlife(p))),
                 float(
                     sum(
                         gs.env.wildlife[ap] is None and w in art.tile.wildlife_slots
-                        for ap, art in gs.env.tiles.adjacent(p)
+                        for ap, art in gs.env.adjacent_tiles(p)
                     )
                 ),
             ]
         )
 
-    adjacent_unique = {w for _, w in gs.env.wildlife.adjacent(p)}
+    adjacent_unique = {w for _, w in gs.env.adjacent_wildlife(p)}
     adjacent_empty_slots = {
         w
-        for ap, art in gs.env.tiles.adjacent(p)
+        for ap, art in gs.env.adjacent_tiles(p)
         for w in art.tile.wildlife_slots
         if gs.env.wildlife[ap] is None
     }

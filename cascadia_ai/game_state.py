@@ -2,8 +2,7 @@ from copy import deepcopy
 from random import Random
 from typing import NamedTuple
 from cascadia_ai.enums import Wildlife
-from cascadia_ai.environments import Environment, starting_tiles
-from cascadia_ai.hex_grid import HexPosition
+from cascadia_ai.environments import Environment, HexPosition, starting_tiles
 from cascadia_ai.tiles import Tile, tiles
 
 
@@ -58,40 +57,34 @@ class GameState:
 
     @property
     def turns_remaining(self):
-        return 23 - len(self.env.tiles)
+        return 23 - self.env.num_tiles_placed
 
     def validate_move(self, move: Move):
         if self.turns_remaining <= 0:
             raise Exception("No turns remaining")
 
-        if move.tile_index < 0 or move.tile_index > 3:
+        if move.tile_index not in range(4):
             raise Exception("Tile index out of bounds")
 
-        if move.wildlife_index < 0 or move.wildlife_index > 3:
+        if move.wildlife_index not in range(4):
             raise Exception("Wildlife index out of bounds")
 
         if move.tile_index != move.wildlife_index and self.nature_tokens <= 0:
             raise Exception("Cannot use mismatched pair without nature tokens")
 
-        if self.env.tiles[move.tile_position] is not None:
-            raise Exception("Tile already exists at given position")
-
-        if len(list(self.env.tiles.adjacent(move.tile_position))) == 0:
-            raise Exception("Tile must be placed adjacent to another tile")
+        if not self.env.can_accept_tile(move.tile_position):
+            raise Exception("Cannot place tile there")
 
         if move.wildlife_position is not None:
             wildlife = self.wildlife_bag[move.wildlife_index]
+
             if move.wildlife_position == move.tile_position:
                 if wildlife not in self.tile_supply[move.tile_index].wildlife_slots:
-                    raise Exception("Target tile does not accept this wildlife type")
+                    raise Exception("Cannot place wildlife there")
+
             else:
-                if self.env.wildlife[move.wildlife_position] is not None:
-                    raise Exception("Wildlife already exists at given position")
-                wildlife_target = self.env.tiles[move.wildlife_position]
-                if wildlife_target is None:
-                    raise Exception("Wildlife must be placed on a tile")
-                if wildlife not in wildlife_target.tile.wildlife_slots:
-                    raise Exception("Target tile does not accept this wildlife type")
+                if not self.env.can_accept_wildlife(move.wildlife_position, wildlife):
+                    raise Exception("Cannot place wildlife there")
 
     def available_moves(self):
         for tile_index in range(4):
@@ -100,12 +93,11 @@ class GameState:
             wildlife_index = tile_index  # TODO add nature token option
             wildlife = self.wildlife_bag[wildlife_index]
 
-            for tile_position in self.env.tiles.all_empty_adjacent():
+            for tile_position in self.env.all_adjacent_empty():
                 wildlife_positions = {None} | {
                     p
-                    for p, rtile in self.env.tiles.items()
+                    for p, rtile in self.env.unoccupied_tiles()
                     if wildlife in rtile.tile.wildlife_slots
-                    and p not in self.env.wildlife
                 }
 
                 if wildlife in tile.wildlife_slots:
@@ -137,8 +129,7 @@ class GameState:
         if move.wildlife_position is not None:
             new_gs.env.place_wildlife(move.wildlife_position, wildlife)
 
-            wildlife_target = new_gs.env.tiles[move.wildlife_position]
-            if wildlife_target is not None and wildlife_target.tile.nature_token_reward:
+            if new_gs.env.tiles[move.wildlife_position].tile.nature_token_reward:
                 new_gs.nature_tokens += 1
 
         new_gs.tile_supply.pop(0)
