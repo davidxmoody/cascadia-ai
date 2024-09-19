@@ -1,5 +1,5 @@
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import Environment, RotatedTile
+from cascadia_ai.environments import Environment
 from cascadia_ai.score import (
     calculate_habitat_scores,
     calculate_bear_score,
@@ -15,9 +15,7 @@ def make_env(
     tiles: list[tuple[tuple[int, int], str, int]],
     wildlife: list[tuple[tuple[int, int], Wildlife]] = [],
 ):
-    env = Environment(
-        {p: RotatedTile(Tile.from_definition(tdef), rot) for p, tdef, rot in tiles}
-    )
+    env = Environment({p: Tile.from_definition(tdef, rot) for p, tdef, rot in tiles})
 
     for p, w in wildlife:
         env.place_wildlife(p, w)

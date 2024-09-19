@@ -15,24 +15,24 @@ from cascadia_ai.score import calculate_score
 
 # %%
 def get_node_features(gs: GameState, p: HexPosition) -> list[float]:
-    rtile = gs.env.tiles[p]
-    if rtile is None:
+    tile = gs.env.tiles[p]
+    if tile is None:
         raise Exception("Missing tile")
     wildlife = gs.env.wildlife[p]
 
     wfilled = [wildlife == w for w in Wildlife]
     wpotential = [
-        wildlife == w or (wildlife is None and w in rtile.tile.wildlife_slots)
+        wildlife == w or (wildlife is None and w in tile.wildlife_slots)
         for w in Wildlife
     ]
 
-    sides = [rtile.tile.habitats[0]] * 3 + [rtile.tile.habitats[1]] * 3
-    for _ in range(rtile.rotation):
+    sides = [tile.habitats[0]] * 3 + [tile.habitats[1]] * 3
+    for _ in range(tile.rotation):
         sides = [sides[-1]] + sides[:-1]
 
     sides_exploded = [h1 == h2 for h1 in sides for h2 in Habitat]
 
-    bools = [rtile.tile.nature_token_reward, *wfilled, *wpotential, *sides_exploded]
+    bools = [tile.nature_token_reward, *wfilled, *wpotential, *sides_exploded]
     return [float(b) for b in bools]
 
 
@@ -171,18 +171,17 @@ print(results)
 
 # %%
 def get_node_features_v2(gs: GameState, p: HexPosition) -> list[float]:
-    rtile = gs.env.tiles[p]
-    if rtile is None:
+    tile = gs.env.tiles[p]
+    if tile is None:
         raise Exception("Missing tile")
 
-    tile = rtile.tile
     wildlife = gs.env.wildlife[p]
 
     num_matching_edges = 0
     for ap, art in gs.env.adjacent_tiles(p):
         q1, r1 = p
         q2, r2 = ap
-        edge1 = rtile.get_edge((q2 - q1, r2 - r1))
+        edge1 = tile.get_edge((q2 - q1, r2 - r1))
         edge2 = art.get_edge((q1 - q2, r1 - r2))
         if edge1 == edge2:
             num_matching_edges += 1
@@ -201,8 +200,8 @@ def get_node_features_v2(gs: GameState, p: HexPosition) -> list[float]:
                 float(sum(aw == w for _, aw in gs.env.adjacent_wildlife(p))),
                 float(
                     sum(
-                        gs.env.wildlife[ap] is None and w in art.tile.wildlife_slots
-                        for ap, art in gs.env.adjacent_tiles(p)
+                        gs.env.wildlife[apos] is None and w in atile.wildlife_slots
+                        for apos, atile in gs.env.adjacent_tiles(p)
                     )
                 ),
             ]
@@ -211,9 +210,9 @@ def get_node_features_v2(gs: GameState, p: HexPosition) -> list[float]:
     adjacent_unique = {w for _, w in gs.env.adjacent_wildlife(p)}
     adjacent_empty_slots = {
         w
-        for ap, art in gs.env.adjacent_tiles(p)
-        for w in art.tile.wildlife_slots
-        if gs.env.wildlife[ap] is None
+        for apos, atile in gs.env.adjacent_tiles(p)
+        for w in atile.wildlife_slots
+        if gs.env.wildlife[apos] is None
     }
     features.extend(
         [

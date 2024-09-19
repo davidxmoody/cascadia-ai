@@ -1,7 +1,7 @@
 from collections import Counter
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.tiles import Tile
-from typing import Dict, NamedTuple, Tuple
+from typing import Dict, Tuple
 
 HexPosition = Tuple[int, int]
 
@@ -14,46 +14,21 @@ def adjacent_positions(pos: HexPosition):
         yield (q + dq, r + dr)
 
 
-class RotatedTile(NamedTuple):
-    tile: Tile
-    rotation: int
-
-    def get_edge(self, dpos: tuple[int, int]):
-        h1, h2 = self.tile.habitats
-        rot = self.rotation
-
-        match dpos:
-            case (0, 1):
-                return h1 if 1 <= rot <= 3 else h2
-            case (1, 0):
-                return h1 if 2 <= rot <= 4 else h2
-            case (1, -1):
-                return h1 if 3 <= rot <= 5 else h2
-            case (0, -1):
-                return h2 if 1 <= rot <= 3 else h1
-            case (-1, 0):
-                return h2 if 2 <= rot <= 4 else h1
-            case (-1, 1):
-                return h2 if 3 <= rot <= 5 else h1
-            case _:
-                raise Exception("Get edge called with non adjacent dpos")
-
-
 def share_edge(
     habitat: Habitat,
     pos1: HexPosition,
-    rtile1: RotatedTile,
+    tile1: Tile,
     pos2: HexPosition,
-    rtile2: RotatedTile,
+    tile2: Tile,
 ):
     q1, r1 = pos1
     q2, r2 = pos2
-    edge1 = rtile1.get_edge((q2 - q1, r2 - r1))
-    edge2 = rtile2.get_edge((q1 - q2, r1 - r2))
+    edge1 = tile1.get_edge((q2 - q1, r2 - r1))
+    edge2 = tile2.get_edge((q1 - q2, r1 - r2))
     return edge1 == edge2 == habitat
 
 
-TileGrid = Dict[HexPosition, RotatedTile]
+TileGrid = Dict[HexPosition, Tile]
 WildlifeGrid = Dict[HexPosition, Wildlife]
 
 
@@ -67,9 +42,9 @@ starting_tile_defs: list[tuple[str, str, str]] = [
 
 starting_tiles: list[TileGrid] = [
     {
-        (20, 21): RotatedTile(Tile.from_definition(a), 0),
-        (20, 20): RotatedTile(Tile.from_definition(b), 1),
-        (21, 20): RotatedTile(Tile.from_definition(c), 2),
+        (20, 21): Tile.from_definition(a, 0),
+        (20, 20): Tile.from_definition(b, 1),
+        (21, 20): Tile.from_definition(c, 2),
     }
     for a, b, c in starting_tile_defs
 ]
@@ -91,21 +66,6 @@ class Environment:
     def num_wildlife_placed(self):
         return len(self.wildlife)
 
-    def can_accept_tile(self, pos: HexPosition):
-        return pos not in self.tiles and any(
-            apos in self.tiles for apos in adjacent_positions(pos)
-        )
-
-    def can_accept_wildlife(self, pos: HexPosition, wildlife: Wildlife):
-        return (
-            pos not in self.wildlife
-            and pos in self.tiles
-            and wildlife in self.tiles[pos].tile.wildlife_slots
-        )
-
-    def adjacent_empty(self, pos: HexPosition):
-        return (apos for apos in adjacent_positions(pos) if apos not in self.tiles)
-
     def adjacent_tiles(self, pos: HexPosition):
         return (
             (apos, self.tiles[apos])
@@ -123,25 +83,28 @@ class Environment:
     def adjacent_wildlife_counts(self, pos: HexPosition):
         return Counter(w for _, w in self.adjacent_wildlife(pos))
 
+    def adjacent_empty(self, pos: HexPosition):
+        return (apos for apos in adjacent_positions(pos) if apos not in self.tiles)
+
     def all_adjacent_empty(self):
         return {apos for pos in self.tiles for apos in self.adjacent_empty(pos)}
 
     def unoccupied_tiles(self):
-        for pos, rtile in self.tiles.items():
+        for pos, tile in self.tiles.items():
             if pos not in self.wildlife:
-                yield (pos, rtile)
+                yield (pos, tile)
 
     def habitat_groups(self):
         connections: dict[Habitat, dict[HexPosition, set[HexPosition]]] = {
             h: {} for h in Habitat
         }
 
-        for pos, rtile in self.tiles.items():
-            for h in set(rtile.tile.habitats):
+        for pos, tile in self.tiles.items():
+            for h in set(tile.habitats):
                 connections[h][pos] = {pos} | {
                     apos
-                    for apos, artile in self.adjacent_tiles(pos)
-                    if share_edge(h, pos, rtile, apos, artile)
+                    for apos, atile in self.adjacent_tiles(pos)
+                    if share_edge(h, pos, tile, apos, atile)
                 }
 
         for h in Habitat:
@@ -183,12 +146,24 @@ class Environment:
 
         return groups
 
-    def place_tile(self, pos: HexPosition, tile: Tile, rotation: int):
-        if not self.can_accept_tile(pos):
+    def can_place_tile(self, pos: HexPosition):
+        return pos not in self.tiles and any(
+            apos in self.tiles for apos in adjacent_positions(pos)
+        )
+
+    def can_place_wildlife(self, pos: HexPosition, wildlife: Wildlife):
+        return (
+            pos not in self.wildlife
+            and pos in self.tiles
+            and wildlife in self.tiles[pos].wildlife_slots
+        )
+
+    def place_tile(self, pos: HexPosition, tile: Tile):
+        if not self.can_place_tile(pos):
             raise ValueError("Cannot place tile there")
-        self.tiles[pos] = RotatedTile(tile, rotation)
+        self.tiles[pos] = tile
 
     def place_wildlife(self, pos: HexPosition, wildlife: Wildlife):
-        if not self.can_accept_wildlife(pos, wildlife):
+        if not self.can_place_wildlife(pos, wildlife):
             raise ValueError("Cannot place wildlife there")
         self.wildlife[pos] = wildlife

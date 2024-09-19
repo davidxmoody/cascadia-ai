@@ -5,13 +5,14 @@ from cascadia_ai.enums import Habitat, Wildlife
 class Tile(NamedTuple):
     habitats: tuple[Habitat, Habitat]
     wildlife_slots: frozenset[Wildlife]
+    rotation: int = 0
 
     @classmethod
-    def from_definition(cls, definition: str):
+    def from_definition(cls, definition: str, rotation: int = 0):
         h1, h2, *ws = definition
         habitats = (Habitat(h1), Habitat(h2))
         wildlife_slots = frozenset(Wildlife(w) for w in ws)
-        return cls(habitats, wildlife_slots)
+        return cls(habitats, wildlife_slots, rotation)
 
     @property
     def single_habitat(self):
@@ -21,12 +22,33 @@ class Tile(NamedTuple):
     def nature_token_reward(self):
         return self.single_habitat
 
+    def rotate(self, steps: int):
+        return self._replace(rotation=(self.rotation + steps) % 6)
+
+    def get_edge(self, dpos: tuple[int, int]):
+        h1, h2 = self.habitats
+        rot = self.rotation
+
+        match dpos:
+            case (0, 1):
+                return h1 if 1 <= rot <= 3 else h2
+            case (1, 0):
+                return h1 if 2 <= rot <= 4 else h2
+            case (1, -1):
+                return h1 if 3 <= rot <= 5 else h2
+            case (0, -1):
+                return h2 if 1 <= rot <= 3 else h1
+            case (-1, 0):
+                return h2 if 2 <= rot <= 4 else h1
+            case (-1, 1):
+                return h2 if 3 <= rot <= 5 else h1
+            case _:
+                raise Exception("Get edge called with non adjacent dpos")
+
     def __repr__(self):
         h1, h2 = (h.value for h in self.habitats)
         ws = "".join(w.value for w in self.wildlife_slots)
-        return f'Tile("{h1}{h2}{ws}")'
-
-    # TODO refactor to include a default rotation
+        return f"Tile({h1}{h2}{ws}{self.rotation})"
 
 
 tile_defs = [

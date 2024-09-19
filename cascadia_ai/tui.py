@@ -43,7 +43,7 @@ console = Console(
 def print_env(env: Environment):
     chars: dict[tuple[int, int], str] = {}
 
-    for (q, r), (tile, rotation) in env.tiles.items():
+    for (q, r), tile in env.tiles.items():
         hl, hr = tile.habitats
         sides = [hr, hr, hr, hl, hl, hl]
 
@@ -69,7 +69,7 @@ def print_env(env: Environment):
                 p = (x + dx, y + dy)
 
                 if color_placeholder.isdigit():
-                    style = f"h{sides[int(color_placeholder) - rotation].value.lower()}"
+                    style = f"h{sides[int(color_placeholder) - tile.rotation].value.lower()}"
                 else:
                     style = wstyle
 
