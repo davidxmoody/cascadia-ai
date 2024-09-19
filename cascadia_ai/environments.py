@@ -1,4 +1,5 @@
 from collections import Counter
+from copy import deepcopy
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.tiles import Tile
 from typing import Dict, Tuple
@@ -167,3 +168,6 @@ class Environment:
         if not self.can_place_wildlife(pos, wildlife):
             raise ValueError("Cannot place wildlife there")
         self.wildlife[pos] = wildlife
+
+    def copy(self):
+        return deepcopy(self)

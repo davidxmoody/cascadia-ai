@@ -86,6 +86,16 @@ def calculate_fox_score(env: Environment):
     )
 
 
+def calculate_wildlife_score(env: Environment):
+    return {
+        Wildlife.BEAR: calculate_bear_score(env),
+        Wildlife.ELK: calculate_elk_score(env),
+        Wildlife.SALMON: calculate_salmon_score(env),
+        Wildlife.HAWK: calculate_hawk_score(env),
+        Wildlife.FOX: calculate_fox_score(env),
+    }
+
+
 class Score(NamedTuple):
     wildlife: dict[Wildlife, int]
     habitat: dict[Habitat, int]
@@ -94,13 +104,7 @@ class Score(NamedTuple):
 
 
 def calculate_score(gs: GameState):
-    wildlife = {
-        Wildlife.BEAR: calculate_bear_score(gs.env),
-        Wildlife.ELK: calculate_elk_score(gs.env),
-        Wildlife.SALMON: calculate_salmon_score(gs.env),
-        Wildlife.HAWK: calculate_hawk_score(gs.env),
-        Wildlife.FOX: calculate_fox_score(gs.env),
-    }
+    wildlife = calculate_wildlife_score(gs.env)
 
     habitat = calculate_habitat_scores(gs.env)
 
