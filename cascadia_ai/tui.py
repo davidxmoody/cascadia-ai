@@ -53,7 +53,7 @@ def print_env(env: Environment):
         qQ = str(q).rjust(2)
         rR = str(r).ljust(2)
 
-        if (w := env.wildlife[(q, r)]) is not None:
+        if (w := env.wildlife.get((q, r), None)) is not None:
             ABC = f" {w.value.upper()} "
             wstyle = f"w{w.value}"
         else:
@@ -109,7 +109,7 @@ def print_gs(gs: GameState):
     print()
 
     for i in range(4):
-        print(f"{i}: {str(gs.tile_supply[i]).ljust(13)} / {gs.wildlife_bag[i]}")
+        print(f"{i}: {str(gs.tile_supply[i]).ljust(12)} / {gs.wildlife_bag[i]}")
     print()
 
     print_env(gs.env)
