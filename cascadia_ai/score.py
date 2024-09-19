@@ -1,52 +1,15 @@
 from typing import NamedTuple
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import Environment, HexPosition, RotatedTile, hex_steps
+from cascadia_ai.environments import Environment, HexPosition, hex_steps
 from cascadia_ai.game_state import GameState
 
 
-def share_edge(
-    habitat: Habitat,
-    pos1: HexPosition,
-    rtile1: RotatedTile,
-    pos2: HexPosition,
-    rtile2: RotatedTile,
-):
-    q1, r1 = pos1
-    q2, r2 = pos2
-    edge1 = rtile1.get_edge((q2 - q1, r2 - r1))
-    edge2 = rtile2.get_edge((q1 - q2, r1 - r2))
-    return edge1 == edge2 == habitat
-
-
-def calculate_habitat_score(habitat: Habitat, env: Environment):
-    # TODO consider adding "habitat_groups()" method to env
-    groups: dict[HexPosition, set[HexPosition]] = {}
-
-    for pos, rtile in env.tiles.items():
-        if habitat not in rtile.tile.habitats:
-            continue
-
-        groups[pos] = {pos} | {
-            apos
-            for apos, artile in env.adjacent_tiles(pos)
-            if share_edge(habitat, pos, rtile, apos, artile)
-        }
-
-    for pos in list(groups.keys()):
-        merged = False
-        for other_pos, other_group in groups.items():
-            if pos != other_pos and pos in other_group:
-                groups[other_pos] = other_group | groups[pos]
-                merged = True
-        if merged:
-            del groups[pos]
-
-    score = 0 if len(groups) == 0 else max(len(group) for group in groups.values())
-
-    if score >= 7:
-        score += 2
-
-    return score
+def calculate_habitat_scores(env: Environment):
+    largest_group_sizes = {
+        h: max((len(g) for g in gs), default=0)
+        for h, gs in env.habitat_groups().items()
+    }
+    return {h: v + 2 if v >= 7 else v for h, v in largest_group_sizes.items()}
 
 
 def score_lookup(score_table: list[int], value: int):
@@ -124,22 +87,22 @@ def calculate_fox_score(env: Environment):
 
 
 class Score(NamedTuple):
-    wildlife: dict[str, int]
-    habitat: dict[str, int]
+    wildlife: dict[Wildlife, int]
+    habitat: dict[Habitat, int]
     nature_tokens: int
     total: int
 
 
 def calculate_score(gs: GameState):
     wildlife = {
-        Wildlife.BEAR.value: calculate_bear_score(gs.env),
-        Wildlife.ELK.value: calculate_elk_score(gs.env),
-        Wildlife.SALMON.value: calculate_salmon_score(gs.env),
-        Wildlife.HAWK.value: calculate_hawk_score(gs.env),
-        Wildlife.FOX.value: calculate_fox_score(gs.env),
+        Wildlife.BEAR: calculate_bear_score(gs.env),
+        Wildlife.ELK: calculate_elk_score(gs.env),
+        Wildlife.SALMON: calculate_salmon_score(gs.env),
+        Wildlife.HAWK: calculate_hawk_score(gs.env),
+        Wildlife.FOX: calculate_fox_score(gs.env),
     }
 
-    habitat = {h.value: calculate_habitat_score(h, gs.env) for h in Habitat}
+    habitat = calculate_habitat_scores(gs.env)
 
     return Score(
         wildlife=wildlife,

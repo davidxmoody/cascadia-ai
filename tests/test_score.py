@@ -1,7 +1,7 @@
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import Environment, RotatedTile
 from cascadia_ai.score import (
-    calculate_habitat_score,
+    calculate_habitat_scores,
     calculate_bear_score,
     calculate_elk_score,
     calculate_salmon_score,
@@ -36,18 +36,20 @@ def test_habitat_score():
         ]
     )
 
-    assert calculate_habitat_score(Habitat("M"), env) == 2
-    assert calculate_habitat_score(Habitat("F"), env) == 1
-    assert calculate_habitat_score(Habitat("P"), env) == 1
-    assert calculate_habitat_score(Habitat("W"), env) == 1
-    assert calculate_habitat_score(Habitat("R"), env) == 2
+    assert calculate_habitat_scores(env) == {
+        Habitat("M"): 2,
+        Habitat("F"): 1,
+        Habitat("P"): 1,
+        Habitat("W"): 1,
+        Habitat("R"): 2,
+    }
 
 
 def test_habitat_score_bonus():
     area_size = 10
     env = make_env([((i, 0), "MMb", 0) for i in range(area_size)])
 
-    assert calculate_habitat_score(Habitat("M"), env) == area_size + 2
+    assert calculate_habitat_scores(env)[Habitat("M")] == area_size + 2
 
 
 def test_bear_score():

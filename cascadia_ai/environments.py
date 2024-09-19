@@ -1,5 +1,5 @@
 from collections import Counter
-from cascadia_ai.enums import Wildlife
+from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.tiles import Tile
 from typing import Dict, NamedTuple, Tuple
 
@@ -37,6 +37,20 @@ class RotatedTile(NamedTuple):
                 return h2 if 3 <= rot <= 5 else h1
             case _:
                 raise Exception("Get edge called with non adjacent dpos")
+
+
+def share_edge(
+    habitat: Habitat,
+    pos1: HexPosition,
+    rtile1: RotatedTile,
+    pos2: HexPosition,
+    rtile2: RotatedTile,
+):
+    q1, r1 = pos1
+    q2, r2 = pos2
+    edge1 = rtile1.get_edge((q2 - q1, r2 - r1))
+    edge2 = rtile2.get_edge((q1 - q2, r1 - r2))
+    return edge1 == edge2 == habitat
 
 
 TileGrid = Dict[HexPosition, RotatedTile]
@@ -116,6 +130,31 @@ class Environment:
         for pos, rtile in self.tiles.items():
             if pos not in self.wildlife:
                 yield (pos, rtile)
+
+    def habitat_groups(self):
+        connections: dict[Habitat, dict[HexPosition, set[HexPosition]]] = {
+            h: {} for h in Habitat
+        }
+
+        for pos, rtile in self.tiles.items():
+            for h in set(rtile.tile.habitats):
+                connections[h][pos] = {pos} | {
+                    apos
+                    for apos, artile in self.adjacent_tiles(pos)
+                    if share_edge(h, pos, rtile, apos, artile)
+                }
+
+        for h in Habitat:
+            for pos in list(connections[h]):
+                merged = False
+                for other_pos, other_group in connections[h].items():
+                    if pos != other_pos and pos in other_group:
+                        connections[h][other_pos] = other_group | connections[h][pos]
+                        merged = True
+                if merged:
+                    del connections[h][pos]
+
+        return {h: list(groups_dict.values()) for h, groups_dict in connections.items()}
 
     def wildlife_groups(self, wildlife: Wildlife):
         positions = {p for p, w in self.wildlife.items() if w == wildlife}
