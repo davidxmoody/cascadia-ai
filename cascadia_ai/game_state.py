@@ -1,5 +1,5 @@
 from copy import deepcopy
-from random import Random
+from random import Random, randint
 from typing import NamedTuple
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.environments import Environment, HexPosition, starting_tiles
@@ -26,8 +26,8 @@ class GameState:
 
     history: list[Move]
 
-    def __init__(self, seed: int):
-        self._seed = seed
+    def __init__(self, seed: int | None = None):
+        self._seed = seed if seed is not None else randint(0, 2**32)
         self._rand = Random(seed)
 
         self.history = []
