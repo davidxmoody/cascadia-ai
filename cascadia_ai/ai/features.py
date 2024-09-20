@@ -54,7 +54,7 @@ def unoccupied_potential(env: Environment, wscore: dict[Wildlife, int]):
     }
 
 
-def get_gs_features(gs: GameState) -> dict[str, float]:
+def get_features(gs: GameState) -> dict[str, float]:
     wscore = calculate_wildlife_score(gs.env)
 
     features = {

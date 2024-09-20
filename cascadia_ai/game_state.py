@@ -1,5 +1,5 @@
 from copy import deepcopy
-from random import Random, randint
+from random import Random, choice, randint
 from typing import NamedTuple
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.environments import Environment, HexPosition, starting_tiles
@@ -87,6 +87,8 @@ class GameState:
                     raise Exception("Cannot place wildlife there")
 
     def available_moves(self):
+        moves: list[Move] = []
+
         for tile_index in range(4):
             tile = self.tile_supply[tile_index]
 
@@ -105,13 +107,23 @@ class GameState:
 
                 for wildlife_position in wildlife_positions:
                     for rotation in range(1 if tile.single_habitat else 6):
-                        yield Move(
-                            tile_index,
-                            tile_position,
-                            rotation,
-                            wildlife_index,
-                            wildlife_position,
+                        moves.append(
+                            Move(
+                                tile_index,
+                                tile_position,
+                                rotation,
+                                wildlife_index,
+                                wildlife_position,
+                            )
                         )
+
+        return moves
+
+    def get_all_next_states(self):
+        return [self.make_move(move) for move in self.available_moves()]
+
+    def get_random_next_state(self):
+        return self.make_move(choice(self.available_moves()))
 
     def make_move(self, move: Move):
         self.validate_move(move)
