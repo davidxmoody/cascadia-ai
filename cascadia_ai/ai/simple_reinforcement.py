@@ -5,16 +5,18 @@ import torch.nn as nn
 import lightning as L
 from random import random
 from time import time
-from cascadia_ai.ai.features2 import get_move_features, get_state_features
+from cascadia_ai.ai.features2 import get_action_features, get_state_features
 
-from cascadia_ai.game_state import GameState, Move
+from cascadia_ai.game_state import GameState, Action
 from cascadia_ai.score import calculate_score
 
 device = "mps"
 batch_size = 32
 
 num_state_features = len(get_state_features(GameState()))
-num_move_features = len(get_move_features(GameState(), Move(0, (0, 0), 0, 0, (0, 0))))
+num_action_features = len(
+    get_action_features(GameState(), Action(0, (0, 0), 0, 0, (0, 0)))
+)
 
 
 class DQNLightning(L.LightningModule):
@@ -72,20 +74,18 @@ def play_game(model: DQNLightning, epsilon: float, seed: int | None = None):
     action_features: list[list[float]] = []
     rewards: list[int] = []
 
-    # TODO rename "moves" to "actions" everywhere
-
     while state.turns_remaining > 0:
         current_state_features = get_state_features(state)
 
         if random() < epsilon:
-            action = state.get_random_move()
+            action = state.get_random_action()
 
         else:
             # print("Available actions start")
             # aastart = time()
-            available_actions = state.available_moves()
+            available_actions = state.available_actions()
             available_action_features = [
-                get_move_features(state, action) for action in available_actions
+                get_action_features(state, action) for action in available_actions
             ]
             # print("Available actions end:", time() - aastart)
 
@@ -103,9 +103,9 @@ def play_game(model: DQNLightning, epsilon: float, seed: int | None = None):
             action = available_actions[max_index]
 
         state_features.append(current_state_features)
-        action_features.append(get_move_features(state, action))
+        action_features.append(get_action_features(state, action))
 
-        state = state.make_move(action)
+        state = state.take_action(action)
         new_score = calculate_score(state).total
         rewards.append(new_score - score)
         score = new_score
@@ -141,7 +141,7 @@ def generate_dataset(model: DQNLightning, epsilon: float, num_games: int):
     )
 
 
-model = DQNLightning(num_state_features, num_move_features, 32)
+model = DQNLightning(num_state_features, num_action_features, 32)
 
 epsilon = 1.0
 

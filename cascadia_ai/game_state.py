@@ -7,7 +7,7 @@ from cascadia_ai.environments import Environment, HexPosition, starting_tiles
 from cascadia_ai.tiles import Tile, tiles
 
 
-class Move(NamedTuple):
+class Action(NamedTuple):
     tile_index: int
     tile_position: HexPosition
     tile_rotation: int
@@ -26,13 +26,9 @@ class GameState:
     env: Environment
     nature_tokens: int = 0
 
-    history: list[Move]
-
     def __init__(self, seed: int | None = None):
         self._seed = seed if seed is not None else randint(0, 2**32)
         self._rand = Random(seed)
-
-        self.history = []
 
         self.env = Environment(self._rand.choice(starting_tiles))
 
@@ -68,35 +64,35 @@ class GameState:
         # TODO maybe do something to ensure that there's no cheating by looking at the order
         return self.tile_supply[4:]
 
-    def validate_move(self, move: Move):
+    def validate_action(self, action: Action):
         if self.turns_remaining <= 0:
             raise Exception("No turns remaining")
 
-        if move.tile_index not in range(4):
+        if action.tile_index not in range(4):
             raise Exception("Tile index out of bounds")
 
-        if move.wildlife_index not in range(4):
+        if action.wildlife_index not in range(4):
             raise Exception("Wildlife index out of bounds")
 
-        if move.tile_index != move.wildlife_index and self.nature_tokens <= 0:
+        if action.tile_index != action.wildlife_index and self.nature_tokens <= 0:
             raise Exception("Cannot use mismatched pair without nature tokens")
 
-        if not self.env.can_place_tile(move.tile_position):
+        if not self.env.can_place_tile(action.tile_position):
             raise Exception("Cannot place tile there")
 
-        if move.wildlife_position is not None:
-            wildlife = self.wildlife_bag[move.wildlife_index]
+        if action.wildlife_position is not None:
+            wildlife = self.wildlife_bag[action.wildlife_index]
 
-            if move.wildlife_position == move.tile_position:
-                if wildlife not in self.tile_supply[move.tile_index].wildlife_slots:
+            if action.wildlife_position == action.tile_position:
+                if wildlife not in self.tile_supply[action.tile_index].wildlife_slots:
                     raise Exception("Cannot place wildlife there")
 
             else:
-                if not self.env.can_place_wildlife(move.wildlife_position, wildlife):
+                if not self.env.can_place_wildlife(action.wildlife_position, wildlife):
                     raise Exception("Cannot place wildlife there")
 
-    def available_moves(self):
-        moves: list[Move] = []
+    def available_actions(self):
+        actions: list[Action] = []
 
         for tile_index in range(4):
             tile = self.tile_supply[tile_index]
@@ -116,8 +112,8 @@ class GameState:
 
                 for wildlife_position in wildlife_positions:
                     for rotation in range(1 if tile.single_habitat else 6):
-                        moves.append(
-                            Move(
+                        actions.append(
+                            Action(
                                 tile_index,
                                 tile_position,
                                 rotation,
@@ -126,9 +122,9 @@ class GameState:
                             )
                         )
 
-        return moves
+        return actions
 
-    def get_random_move(self):
+    def get_random_action(self):
         tile_index = choice(range(4))
         tile = self.tile_supply[tile_index]
 
@@ -151,7 +147,7 @@ class GameState:
 
         rotation = choice(range(1 if tile.single_habitat else 6))
 
-        return Move(
+        return Action(
             tile_index,
             tile_position,
             rotation,
@@ -160,35 +156,33 @@ class GameState:
         )
 
     def get_all_next_states(self):
-        return [self.make_move(move) for move in self.available_moves()]
+        return [self.take_action(action) for action in self.available_actions()]
 
     def get_random_next_state(self):
-        return self.make_move(choice(self.available_moves()))
+        return self.take_action(choice(self.available_actions()))
 
-    def make_move(self, move: Move):
-        self.validate_move(move)
+    def take_action(self, action: Action):
+        self.validate_action(action)
 
         new_gs = deepcopy(self)
 
-        if move.tile_index != move.wildlife_index:
+        if action.tile_index != action.wildlife_index:
             new_gs.nature_tokens -= 1
 
-        tile = new_gs.tile_supply.pop(move.tile_index)
-        wildlife = new_gs.wildlife_bag.pop(move.wildlife_index)
+        tile = new_gs.tile_supply.pop(action.tile_index)
+        wildlife = new_gs.wildlife_bag.pop(action.wildlife_index)
 
-        new_gs.env.place_tile(move.tile_position, tile.rotate(move.tile_rotation))
+        new_gs.env.place_tile(action.tile_position, tile.rotate(action.tile_rotation))
 
-        if move.wildlife_position is not None:
-            new_gs.env.place_wildlife(move.wildlife_position, wildlife)
+        if action.wildlife_position is not None:
+            new_gs.env.place_wildlife(action.wildlife_position, wildlife)
 
-            if new_gs.env.tiles[move.wildlife_position].nature_token_reward:
+            if new_gs.env.tiles[action.wildlife_position].nature_token_reward:
                 new_gs.nature_tokens += 1
 
         new_gs.tile_supply.pop(0)
         new_gs.wildlife_bag.pop(0)
 
         new_gs._check_overpopulation()
-
-        new_gs.history.append(move)
 
         return new_gs

@@ -69,7 +69,7 @@ def get_features(gs: GameState) -> dict[str, float]:
     # TODO add info about remaining wildlife counts in bag and habitat counts in supply
 
     # TODO add in features for what would remain, but this also requires
-    # calculating it based on the old gs and move because the overpopulation
+    # calculating it based on the old gs and action because the overpopulation
     # check may change it in the new gs
     # TODO could maybe just do tiles for now and then do wildlife after some refactoring
     # leftover_tile_indexes = list(range(4))

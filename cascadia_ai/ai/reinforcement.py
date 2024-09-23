@@ -93,8 +93,8 @@ class DQNLightning(L.LightningModule):
             print("states", state)
 
             score = calculate_score(state).total
-            moves = sample(state.available_moves(), 20)
-            next_states = [state.make_move(move) for move in moves]
+            actions = sample(state.available_actions(), 20)
+            next_states = [state.take_action(action) for action in actions]
             rewards = [calculate_score(ns).total - score for ns in next_states]
 
             if next_states[0].turns_remaining == 0:

@@ -65,12 +65,12 @@ def generate_training_data(iterations=100):
         gamestates = [GameState(seed)]
 
         while (gs := gamestates[-1]).turns_remaining > 0:
-            all_moves = list(gs.available_moves())
-            moves = sample(all_moves, min(20, len(all_moves)))
-            chosen_move = max(
-                moves, key=lambda m: calculate_score(gs.make_move(m)).total
+            all_actions = list(gs.available_actions())
+            actions = sample(all_actions, min(20, len(all_actions)))
+            chosen_action = max(
+                actions, key=lambda a: calculate_score(gs.take_action(a)).total
             )
-            gamestates.append(gs.make_move(chosen_move))
+            gamestates.append(gs.take_action(chosen_action))
 
         final_score = calculate_score(gamestates[-1]).total
 

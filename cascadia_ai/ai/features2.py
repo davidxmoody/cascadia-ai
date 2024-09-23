@@ -7,7 +7,7 @@ from cascadia_ai.environments import (
     adjacent_positions,
     share_edge,
 )
-from cascadia_ai.game_state import GameState, Move
+from cascadia_ai.game_state import GameState, Action
 
 
 def encode(enum: type[Enum], *values: Enum):
@@ -96,12 +96,12 @@ def get_state_features(gs: GameState) -> list[float]:
     ]
 
 
-def matching_edges(gs: GameState, move: Move):
+def matching_edges(gs: GameState, action: Action):
     matching = 0
-    tile = gs.tile_supply[move.tile_index]
+    tile = gs.tile_supply[action.tile_index]
 
-    for apos, atile in gs.env.adjacent_tiles(move.tile_position):
-        if share_edge(move.tile_position, tile, apos, atile):
+    for apos, atile in gs.env.adjacent_tiles(action.tile_position):
+        if share_edge(action.tile_position, tile, apos, atile):
             matching += 1
 
     return float(matching)
@@ -117,31 +117,31 @@ def adjacent_wildlife(gs: GameState, pos: HexPosition | None):
     )
 
 
-def get_move_features(gs: GameState, move: Move) -> list[float]:
-    tile = gs.tile_supply[move.tile_index]
-    wildlife = gs.wildlife_bag[move.wildlife_index]
+def get_action_features(gs: GameState, action: Action) -> list[float]:
+    tile = gs.tile_supply[action.tile_index]
+    wildlife = gs.wildlife_bag[action.wildlife_index]
 
     return [
-        float(matching_edges(gs, move)),
-        float(move.tile_index == move.wildlife_index),
-        float(move.tile_position == move.wildlife_position),
-        float(move.wildlife_position is not None),
+        float(matching_edges(gs, action)),
+        float(action.tile_index == action.wildlife_index),
+        float(action.tile_position == action.wildlife_position),
+        float(action.wildlife_position is not None),
         *encode(Wildlife, wildlife),
         *encode(Wildlife, *tile.wildlife_slots),
         *encode(Habitat, *tile.habitats),
-        *adjacent_wildlife(gs, move.tile_position),
-        *adjacent_wildlife(gs, move.wildlife_position),
+        *adjacent_wildlife(gs, action.tile_position),
+        *adjacent_wildlife(gs, action.wildlife_position),
     ]
 
 
 def get_transitions(gs: GameState):
     state_features = get_state_features(gs)
 
-    moves: list[Move] = []
-    move_features: list[list[float]] = []
+    actions: list[Action] = []
+    action_features: list[list[float]] = []
 
-    for move in gs.available_moves():
-        moves.append(move)
-        move_features.append(get_move_features(gs, move))
+    for action in gs.available_actions():
+        actions.append(action)
+        action_features.append(get_action_features(gs, action))
 
-    return (state_features, move_features, moves)
+    return (state_features, action_features, actions)

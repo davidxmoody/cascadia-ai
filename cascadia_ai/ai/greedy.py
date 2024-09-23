@@ -10,11 +10,11 @@ def main(iterations=100):
         gs = GameState(seed)
 
         while gs.turns_remaining > 0:
-            move = max(
-                list(gs.available_moves()),
-                key=lambda m: calculate_score(gs.make_move(m)).total,
+            action = max(
+                list(gs.available_actions()),
+                key=lambda a: calculate_score(gs.take_action(a)).total,
             )
-            gs = gs.make_move(move)
+            gs = gs.take_action(action)
 
         score = calculate_score(gs)
         print(score)
