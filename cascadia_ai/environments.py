@@ -16,17 +16,17 @@ def adjacent_positions(pos: HexPosition):
 
 
 def share_edge(
-    habitat: Habitat,
     pos1: HexPosition,
     tile1: Tile,
     pos2: HexPosition,
     tile2: Tile,
+    habitat: Habitat | None = None,
 ):
     q1, r1 = pos1
     q2, r2 = pos2
     edge1 = tile1.get_edge((q2 - q1, r2 - r1))
     edge2 = tile2.get_edge((q1 - q2, r1 - r2))
-    return edge1 == edge2 == habitat
+    return edge1 == edge2 and (habitat is None or edge1 == habitat)
 
 
 TileGrid = Dict[HexPosition, Tile]
@@ -81,6 +81,13 @@ class Environment:
             if apos in self.wildlife
         )
 
+    def adjacent_unoccupied_tiles(self, pos: HexPosition):
+        return (
+            (apos, atile)
+            for apos, atile in self.adjacent_tiles(pos)
+            if apos not in self.wildlife
+        )
+
     def adjacent_wildlife_counts(self, pos: HexPosition):
         return Counter(w for _, w in self.adjacent_wildlife(pos))
 
@@ -105,7 +112,7 @@ class Environment:
                 connections[h][pos] = {pos} | {
                     apos
                     for apos, atile in self.adjacent_tiles(pos)
-                    if share_edge(h, pos, tile, apos, atile)
+                    if share_edge(pos, tile, apos, atile, h)
                 }
 
         for h in Habitat:

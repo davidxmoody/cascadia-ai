@@ -1,3 +1,4 @@
+from collections import Counter
 from copy import deepcopy
 from random import Random, choice, randint
 from typing import NamedTuple
@@ -18,6 +19,7 @@ class GameState:
     _seed: int
     _rand: Random
 
+    # TODO make this hidden and only expose the currently displayed 4
     wildlife_bag: list[Wildlife]
     tile_supply: list[Tile]
 
@@ -58,6 +60,13 @@ class GameState:
     @property
     def turns_remaining(self):
         return 23 - self.env.num_tiles_placed
+
+    def wildlife_in_supply(self):
+        return Counter(self.wildlife_bag[4:])
+
+    def tiles_in_supply(self):
+        # TODO maybe do something to ensure that there's no cheating by looking at the order
+        return self.tile_supply[4:]
 
     def validate_move(self, move: Move):
         if self.turns_remaining <= 0:
@@ -118,6 +127,37 @@ class GameState:
                         )
 
         return moves
+
+    def get_random_move(self):
+        tile_index = choice(range(4))
+        tile = self.tile_supply[tile_index]
+
+        wildlife_index = tile_index  # TODO add nature token option
+        wildlife = self.wildlife_bag[wildlife_index]
+
+        tile_position = choice(list(self.env.all_adjacent_empty()))
+
+        wildlife_positions = [
+            p
+            for p, tile in self.env.unoccupied_tiles()
+            if wildlife in tile.wildlife_slots
+        ]
+        if wildlife in tile.wildlife_slots:
+            wildlife_positions.append(tile_position)
+
+        wildlife_position = (
+            choice(wildlife_positions) if len(wildlife_positions) else None
+        )
+
+        rotation = choice(range(1 if tile.single_habitat else 6))
+
+        return Move(
+            tile_index,
+            tile_position,
+            rotation,
+            wildlife_index,
+            wildlife_position,
+        )
 
     def get_all_next_states(self):
         return [self.make_move(move) for move in self.available_moves()]
