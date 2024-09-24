@@ -22,6 +22,7 @@ text_template = [
 ]
 
 console = Console(
+    force_terminal=True,
     theme=Theme(
         {
             "hm": "black on #7A7A7A",

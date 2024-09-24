@@ -6,8 +6,7 @@ from cascadia_ai.game_state import GameState
 
 def calculate_habitat_scores(env: Environment):
     largest_group_sizes = {
-        h: max((len(g) for g in gs), default=0)
-        for h, gs in env.habitat_groups().items()
+        h: len(gs[0] if len(gs) else []) for h, gs in env.habitat_groups().items()
     }
     return {h: v + 2 if v >= 7 else v for h, v in largest_group_sizes.items()}
 

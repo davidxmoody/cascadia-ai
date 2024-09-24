@@ -125,7 +125,10 @@ class Environment:
                 if merged:
                     del connections[h][pos]
 
-        return {h: list(groups_dict.values()) for h, groups_dict in connections.items()}
+        return {
+            h: sorted(groups_dict.values(), key=len, reverse=True)
+            for h, groups_dict in connections.items()
+        }
 
     def wildlife_groups(self, wildlife: Wildlife):
         positions = {p for p, w in self.wildlife.items() if w == wildlife}
