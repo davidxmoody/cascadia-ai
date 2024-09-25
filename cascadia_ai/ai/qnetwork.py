@@ -14,11 +14,11 @@ from cascadia_ai.score import calculate_score
 
 
 # %%
-def get_node_features(gs: GameState, p: HexPosition) -> list[float]:
-    tile = gs.env.tiles[p]
+def get_node_features(state: GameState, p: HexPosition) -> list[float]:
+    tile = state.env.tiles[p]
     if tile is None:
         raise Exception("Missing tile")
-    wildlife = gs.env.wildlife[p]
+    wildlife = state.env.wildlife[p]
 
     wfilled = [wildlife == w for w in Wildlife]
     wpotential = [
@@ -39,15 +39,15 @@ def get_node_features(gs: GameState, p: HexPosition) -> list[float]:
 # %%
 
 
-def gs_to_data(gs: GameState, final_score: int):
-    positions = list(gs.env.tiles.keys())
+def state_to_data(state: GameState, final_score: int):
+    positions = list(state.env.tiles.keys())
     nodes = list[list[float]]()
     adjacency = list[tuple[int, int]]()
 
     for pi, p in enumerate(positions):
-        nodes.append(get_node_features_v2(gs, p))
+        nodes.append(get_node_features_v2(state, p))
 
-        for a, _ in gs.env.adjacent_tiles(p):
+        for a, _ in state.env.adjacent_tiles(p):
             ai = positions.index(a)
             adjacency.append((pi, ai))
 
@@ -64,18 +64,18 @@ def generate_training_data(iterations=100):
         seed = randint(0, 10000000)
         gamestates = [GameState(seed)]
 
-        while (gs := gamestates[-1]).turns_remaining > 0:
-            all_actions = list(gs.available_actions())
+        while (state := gamestates[-1]).turns_remaining > 0:
+            all_actions = list(state.available_actions())
             actions = sample(all_actions, min(20, len(all_actions)))
             chosen_action = max(
-                actions, key=lambda a: calculate_score(gs.take_action(a)).total
+                actions, key=lambda a: calculate_score(state.take_action(a)).total
             )
-            gamestates.append(gs.take_action(chosen_action))
+            gamestates.append(state.take_action(chosen_action))
 
         final_score = calculate_score(gamestates[-1]).total
 
-        for gs in gamestates:
-            yield gs_to_data(gs, final_score)
+        for state in gamestates:
+            yield state_to_data(state, final_score)
 
 
 # %%
@@ -170,15 +170,15 @@ print(results)
 
 
 # %%
-def get_node_features_v2(gs: GameState, p: HexPosition) -> list[float]:
-    tile = gs.env.tiles[p]
+def get_node_features_v2(state: GameState, p: HexPosition) -> list[float]:
+    tile = state.env.tiles[p]
     if tile is None:
         raise Exception("Missing tile")
 
-    wildlife = gs.env.wildlife[p]
+    wildlife = state.env.wildlife[p]
 
     num_matching_edges = 0
-    for ap, art in gs.env.adjacent_tiles(p):
+    for ap, art in state.env.adjacent_tiles(p):
         q1, r1 = p
         q2, r2 = ap
         edge1 = tile.get_edge((q2 - q1, r2 - r1))
@@ -197,22 +197,22 @@ def get_node_features_v2(gs: GameState, p: HexPosition) -> list[float]:
             [
                 float(wildlife == w),
                 float(wildlife is None and w in tile.wildlife_slots),
-                float(sum(aw == w for _, aw in gs.env.adjacent_wildlife(p))),
+                float(sum(aw == w for _, aw in state.env.adjacent_wildlife(p))),
                 float(
                     sum(
-                        gs.env.wildlife[apos] is None and w in atile.wildlife_slots
-                        for apos, atile in gs.env.adjacent_tiles(p)
+                        state.env.wildlife[apos] is None and w in atile.wildlife_slots
+                        for apos, atile in state.env.adjacent_tiles(p)
                     )
                 ),
             ]
         )
 
-    adjacent_unique = {w for _, w in gs.env.adjacent_wildlife(p)}
+    adjacent_unique = {w for _, w in state.env.adjacent_wildlife(p)}
     adjacent_empty_slots = {
         w
-        for apos, atile in gs.env.adjacent_tiles(p)
+        for apos, atile in state.env.adjacent_tiles(p)
         for w in atile.wildlife_slots
-        if gs.env.wildlife[apos] is None
+        if state.env.wildlife[apos] is None
     }
     features.extend(
         [

@@ -7,16 +7,16 @@ def main(iterations=100):
     results = []
 
     for seed in range(iterations):
-        gs = GameState(seed)
+        state = GameState(seed)
 
-        while gs.turns_remaining > 0:
+        while state.turns_remaining > 0:
             action = max(
-                list(gs.available_actions()),
-                key=lambda a: calculate_score(gs.take_action(a)).total,
+                list(state.available_actions()),
+                key=lambda a: calculate_score(state.take_action(a)).total,
             )
-            gs = gs.take_action(action)
+            state = state.take_action(action)
 
-        score = calculate_score(gs)
+        score = calculate_score(state)
         print(score)
         results.append(score)
 

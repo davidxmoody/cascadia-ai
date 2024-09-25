@@ -54,26 +54,26 @@ def unoccupied_potential(env: Environment, wscore: dict[Wildlife, int]):
     }
 
 
-def get_features(gs: GameState) -> dict[str, float]:
-    wscore = calculate_wildlife_score(gs.env)
+def get_features(state: GameState) -> dict[str, float]:
+    wscore = calculate_wildlife_score(state.env)
 
     features = {
-        "nature_tokens": gs.nature_tokens,
-        "turns_remaining": gs.turns_remaining,
-        "open_tiles": gs.env.num_tiles_placed - gs.env.num_wildlife_placed,
+        "nature_tokens": state.nature_tokens,
+        "turns_remaining": state.turns_remaining,
+        "open_tiles": state.env.num_tiles_placed - state.env.num_wildlife_placed,
         "wscore": {k.value: v for k, v in wscore.items()},
-        **unoccupied_potential(gs.env, wscore),
-        **habitat_group_sizes(gs.env),
+        **unoccupied_potential(state.env, wscore),
+        **habitat_group_sizes(state.env),
     }
 
     # TODO add info about remaining wildlife counts in bag and habitat counts in supply
 
     # TODO add in features for what would remain, but this also requires
-    # calculating it based on the old gs and action because the overpopulation
-    # check may change it in the new gs
+    # calculating it based on the old state and action because the overpopulation
+    # check may change it in the new state
     # TODO could maybe just do tiles for now and then do wildlife after some refactoring
     # leftover_tile_indexes = list(range(4))
-    # features["leftover_habitats"] = gs
+    # features["leftover_habitats"] = state
 
     # TODO info about how easy it could be to connect them or extend habitat groups
 
@@ -89,5 +89,5 @@ def get_features(gs: GameState) -> dict[str, float]:
     return flatten_features(features)
 
 
-# print_gs(gs)
-# get_gs_features(gs)
+# print_state(state)
+# get_state_features(state)

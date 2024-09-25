@@ -3,7 +3,7 @@ from random import choice
 from cascadia_ai.game_state import GameState
 from cascadia_ai.ai.transitions import get_transitions
 from cascadia_ai.score import calculate_score
-from cascadia_ai.tui import print_gs
+from cascadia_ai.tui import print_state
 
 
 seeds = list(range(10))
@@ -24,8 +24,8 @@ def test_get_transitions(seed: int):
             # TODO only check a fraction of the returned ones to make the test faster
 
             if reward != new_score.total - score.total:
-                print_gs(state)
-                print_gs(new_state)
+                print_state(state)
+                print_state(new_state)
                 print(action, reward)
                 print(score)
                 print(new_score)

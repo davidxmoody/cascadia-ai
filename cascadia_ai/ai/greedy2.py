@@ -4,7 +4,7 @@ from time import time
 from cascadia_ai.ai.transitions import get_transitions
 from cascadia_ai.game_state import GameState
 from cascadia_ai.score import calculate_score
-from cascadia_ai.tui import print_gs
+from cascadia_ai.tui import print_state
 
 
 def main(iterations=100):
@@ -39,7 +39,7 @@ def main(iterations=100):
             )
         )
         # TODO add score to state printing
-        print_gs(state)
+        # print_state(state)
 
     print(f"\nMean score after {iterations} iterations: {mean(results):0.1f}")
     print(f"Time taken: {time() - start_time:0.1f}s")

@@ -70,78 +70,82 @@ def unoccupied_info(env: Environment):
     return encode(Wildlife, *wslots)
 
 
-def remaining_counts(gs: GameState):
-    tiles = gs.tiles_in_supply()
+def remaining_counts(state: GameState):
+    tiles = state.tiles_in_supply()
     habitats = (h for t in tiles for h in t.habitats)
     wslots = (w for t in tiles for w in t.wildlife_slots)
 
     yield from encode(Habitat, *habitats)
     yield from encode(Wildlife, *wslots)
-    yield from encode(Wildlife, *gs.wildlife_bag)
+    yield from encode(Wildlife, *state.wildlife_bag)
 
 
-def get_state_features(gs: GameState) -> list[float]:
+def get_state_features(state: GameState) -> list[float]:
     return [
-        float(gs.turns_remaining),
-        float(gs.nature_tokens),
-        float(gs.env.num_tiles_placed - gs.env.num_wildlife_placed),
-        *habitat_group_sizes(gs.env),
-        *wildlife_group_counts(gs.env, Wildlife.BEAR),
-        *wildlife_group_sizes(gs.env, Wildlife.ELK),
-        *wildlife_group_sizes(gs.env, Wildlife.SALMON),
-        *wildlife_group_counts(gs.env, Wildlife.HAWK),
-        *fox_counts(gs.env),
-        *unoccupied_info(gs.env),
-        *remaining_counts(gs),
+        float(state.turns_remaining),
+        float(state.nature_tokens),
+        float(state.env.num_tiles_placed - state.env.num_wildlife_placed),
+        *habitat_group_sizes(state.env),
+        *wildlife_group_counts(state.env, Wildlife.BEAR),
+        *wildlife_group_sizes(state.env, Wildlife.ELK),
+        *wildlife_group_sizes(state.env, Wildlife.SALMON),
+        *wildlife_group_counts(state.env, Wildlife.HAWK),
+        *fox_counts(state.env),
+        *unoccupied_info(state.env),
+        *remaining_counts(state),
     ]
 
 
-def matching_edges(gs: GameState, action: Action):
+def matching_edges(state: GameState, action: Action):
     matching = 0
-    tile = gs.tile_supply[action.tile_index]
+    tile = state.tile_supply[action.tile_index]
 
-    for apos, atile in gs.env.adjacent_tiles(action.tile_position):
+    for apos, atile in state.env.adjacent_tiles(action.tile_position):
         if share_edge(action.tile_position, tile, apos, atile):
             matching += 1
 
     return float(matching)
 
 
-def adjacent_wildlife(gs: GameState, pos: HexPosition | None):
+def adjacent_wildlife(state: GameState, pos: HexPosition | None):
     if pos is None:
         return encode(Wildlife) + encode(Wildlife)
 
-    return encode(Wildlife, *(w for _, w in gs.env.adjacent_wildlife(pos))) + encode(
+    return encode(Wildlife, *(w for _, w in state.env.adjacent_wildlife(pos))) + encode(
         Wildlife,
-        *(w for _, t in gs.env.adjacent_unoccupied_tiles(pos) for w in t.wildlife_slots)
+        *(
+            w
+            for _, t in state.env.adjacent_unoccupied_tiles(pos)
+            for w in t.wildlife_slots
+        )
     )
 
 
-def get_action_features(gs: GameState, action: Action) -> list[float]:
-    tile = gs.tile_supply[action.tile_index]
-    wildlife = gs.wildlife_bag[action.wildlife_index]
+def get_action_features(state: GameState, action: Action) -> list[float]:
+    tile = state.tile_supply[action.tile_index]
+    wildlife = state.wildlife_bag[action.wildlife_index]
 
     return [
-        float(matching_edges(gs, action)),
+        float(matching_edges(state, action)),
         float(action.tile_index == action.wildlife_index),
         float(action.tile_position == action.wildlife_position),
         float(action.wildlife_position is not None),
         *encode(Wildlife, wildlife),
         *encode(Wildlife, *tile.wildlife_slots),
         *encode(Habitat, *tile.habitats),
-        *adjacent_wildlife(gs, action.tile_position),
-        *adjacent_wildlife(gs, action.wildlife_position),
+        *adjacent_wildlife(state, action.tile_position),
+        *adjacent_wildlife(state, action.wildlife_position),
     ]
 
 
-def get_transitions(gs: GameState):
-    state_features = get_state_features(gs)
+def get_transitions(state: GameState):
+    state_features = get_state_features(state)
 
     actions: list[Action] = []
     action_features: list[list[float]] = []
 
-    for action in gs.available_actions():
+    for action in state.available_actions():
         actions.append(action)
-        action_features.append(get_action_features(gs, action))
+        action_features.append(get_action_features(state, action))
 
     return (state_features, action_features, actions)

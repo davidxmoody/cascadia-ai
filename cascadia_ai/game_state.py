@@ -164,25 +164,25 @@ class GameState:
     def take_action(self, action: Action):
         self.validate_action(action)
 
-        new_gs = deepcopy(self)
+        new_state = deepcopy(self)
 
         if action.tile_index != action.wildlife_index:
-            new_gs.nature_tokens -= 1
+            new_state.nature_tokens -= 1
 
-        tile = new_gs.tile_supply.pop(action.tile_index)
-        wildlife = new_gs.wildlife_bag.pop(action.wildlife_index)
+        tile = new_state.tile_supply.pop(action.tile_index)
+        wildlife = new_state.wildlife_bag.pop(action.wildlife_index)
 
-        new_gs.env.place_tile(action.tile_position, tile.rotate(action.tile_rotation))
+        new_state.env.place_tile(action.tile_position, tile.rotate(action.tile_rotation))
 
         if action.wildlife_position is not None:
-            new_gs.env.place_wildlife(action.wildlife_position, wildlife)
+            new_state.env.place_wildlife(action.wildlife_position, wildlife)
 
-            if new_gs.env.tiles[action.wildlife_position].nature_token_reward:
-                new_gs.nature_tokens += 1
+            if new_state.env.tiles[action.wildlife_position].nature_token_reward:
+                new_state.nature_tokens += 1
 
-        new_gs.tile_supply.pop(0)
-        new_gs.wildlife_bag.pop(0)
+        new_state.tile_supply.pop(0)
+        new_state.wildlife_bag.pop(0)
 
-        new_gs._check_overpopulation()
+        new_state._check_overpopulation()
 
-        return new_gs
+        return new_state

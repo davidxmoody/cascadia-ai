@@ -6,7 +6,7 @@ from cascadia_ai.game_state import GameState
 
 def calculate_habitat_scores(env: Environment):
     largest_group_sizes = {
-        h: len(gs[0] if len(gs) else []) for h, gs in env.habitat_groups().items()
+        h: len(state[0] if len(state) else []) for h, state in env.habitat_groups().items()
     }
     return {h: v + 2 if v >= 7 else v for h, v in largest_group_sizes.items()}
 
@@ -102,14 +102,14 @@ class Score(NamedTuple):
     total: int
 
 
-def calculate_score(gs: GameState):
-    wildlife = calculate_wildlife_score(gs.env)
+def calculate_score(state: GameState):
+    wildlife = calculate_wildlife_score(state.env)
 
-    habitat = calculate_habitat_scores(gs.env)
+    habitat = calculate_habitat_scores(state.env)
 
     return Score(
         wildlife=wildlife,
         habitat=habitat,
-        nature_tokens=gs.nature_tokens,
-        total=sum(wildlife.values()) + sum(habitat.values()) + gs.nature_tokens,
+        nature_tokens=state.nature_tokens,
+        total=sum(wildlife.values()) + sum(habitat.values()) + state.nature_tokens,
     )

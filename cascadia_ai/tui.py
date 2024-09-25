@@ -37,7 +37,7 @@ console = Console(
             "wh": "black on #7DC0E6",
             "wf": "black on #D87334",
         }
-    )
+    ),
 )
 
 
@@ -104,13 +104,13 @@ def print_env(env: Environment):
         console.print(line, highlight=False)
 
 
-def print_gs(gs: GameState):
-    print(f"Seed: {gs._seed}")
-    print(f"Turns remaining: {gs.turns_remaining}")
+def print_state(state: GameState):
+    print(f"Seed: {state._seed}")
+    print(f"Turns remaining: {state.turns_remaining}")
     print()
 
     for i in range(4):
-        print(f"{i}: {str(gs.tile_supply[i]).ljust(12)} / {gs.wildlife_bag[i]}")
+        print(f"{i}: {str(state.tile_supply[i]).ljust(12)} / {state.wildlife_bag[i]}")
     print()
 
-    print_env(gs.env)
+    print_env(state.env)
