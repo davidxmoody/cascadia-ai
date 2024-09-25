@@ -114,6 +114,8 @@ def print_env(env: Environment):
 
 
 def print_state(state: GameState):
+    score = calculate_score(state)
+
     print(f"Seed: {state._seed}")
     print(f"Turns remaining: {state.turns_remaining}")
     print()
@@ -125,5 +127,5 @@ def print_state(state: GameState):
     print_env(state.env)
     print()
 
-    print_score(calculate_score(state))
+    print_score(score)
     print()
