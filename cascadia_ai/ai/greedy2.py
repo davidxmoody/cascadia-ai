@@ -27,19 +27,8 @@ def main(iterations=100):
 
         score = calculate_score(state)
         results.append(score.total)
-        print(
-            ", ".join(
-                str(num).rjust(3)
-                for num in [
-                    *score.wildlife.values(),
-                    *score.habitat.values(),
-                    score.nature_tokens,
-                    score.total,
-                ]
-            )
-        )
-        # TODO add score to state printing
-        # print_state(state)
+        print_state(state)
+        print("--------------------------------------------------------------\n")
 
     print(f"\nMean score after {iterations} iterations: {mean(results):0.1f}")
     print(f"Time taken: {time() - start_time:0.1f}s")

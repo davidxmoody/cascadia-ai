@@ -3,6 +3,8 @@ from cascadia_ai.environments import Environment
 from rich.console import Console
 from rich.theme import Theme
 
+from cascadia_ai.score import Score, calculate_score
+
 color_template = [
     r"    0    ",
     r"  55000  ",
@@ -39,6 +41,13 @@ console = Console(
         }
     ),
 )
+
+
+def print_score(score: Score):
+    print(",  ".join(f"{k.value}: {v:>2}" for k, v in score.wildlife.items()))
+    print(",  ".join(f"{k.value}: {v:>2}" for k, v in score.habitat.items()))
+    print(f"nature: {score.nature_tokens:>2}")
+    print(f"total: {score.total:>3}")
 
 
 def print_env(env: Environment):
@@ -114,3 +123,7 @@ def print_state(state: GameState):
     print()
 
     print_env(state.env)
+    print()
+
+    print_score(calculate_score(state))
+    print()
