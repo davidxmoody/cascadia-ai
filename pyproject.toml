@@ -13,6 +13,7 @@ lightning = "^2.4.0"
 torch-geometric = "^2.5.3"
 pandas = "^2.2.2"
 plotly = "^5.24.1"
+tqdm = "^4.66.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
