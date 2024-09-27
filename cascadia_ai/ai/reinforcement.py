@@ -1,179 +1,158 @@
-from torch.utils.data import Dataset
-from torch_geometric.loader import DataLoader
-from cascadia_ai.ai.features import get_features
+from collections import deque
+from numpy._typing import NDArray
+from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.adam import Adam
 import torch
 import torch.nn as nn
 import lightning as L
-from random import random, sample
-from collections import deque
-
+from random import choice, randint, random, sample
+from tqdm import tqdm
+from cascadia_ai.ai.transitions import get_transitions, feature_names
 from cascadia_ai.game_state import GameState
 from cascadia_ai.score import calculate_score
-
+import numpy as np
+from statistics import mean
 
 device = "mps"
+batch_size = 100
 
 
-class RLDataset(Dataset):
-    def __init__(self, size: int):
-        self.size = size
+# %%
+class DQNLightning(L.LightningModule):
+    def __init__(self, input_dim: int):
+        super().__init__()
 
-    def __len__(self):
-        return self.size
-
-    def __getitem__(self, idx):
-        return idx
-
-
-class DQN(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        # TODO try defining this with sequentially and include the relu bits in there
-        super(DQN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 128)
         self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, output_dim)
+        self.fc3 = nn.Linear(128, 1)
 
-    def forward(self, x):
+        self.loss_fn = nn.MSELoss()
+
+    def forward(self, x):  # type: ignore
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
         return self.fc3(x)
 
-
-class DQNLightning(L.LightningModule):
-    def __init__(
-        self,
-        input_dim,
-        output_dim,
-        lr=1e-3,
-        gamma=0.99,
-        epsilon_start=1.0,
-        epsilon_end=0.01,
-        epsilon_decay=500,
-    ):
-        super(DQNLightning, self).__init__()
-        self.model = DQN(input_dim, output_dim)
-        self.target_model = DQN(input_dim, output_dim)
-        self.target_model.load_state_dict(self.model.state_dict())
-        self.lr = lr
-        self.gamma = gamma
-        self.epsilon = epsilon_start
-        self.epsilon_end = epsilon_end
-        self.epsilon_decay = epsilon_decay
-        self.loss_fn = nn.MSELoss()
-        self.replay_buffer = deque[GameState](maxlen=10000)
-        self.batch_size = 32
-        self.update_target_every = 10
-
-    def forward(self, x):  # type: ignore
-        return self.model(x)
-
     def training_step(self, batch):  # type: ignore
-        # if len(self.replay_buffer) < self.batch_size:
-        #     return None
-
-        ids = batch.tolist()
-
-        print("training step", ids)
-
-        # TODO consider re-randomising the seed when plucking states from replay buffer
-        # states = sample(self.replay_buffer, self.batch_size)
-
-        states = [self.replay_buffer[id] for id in ids]
-        features = torch.tensor([list(get_features(s).values()) for s in states]).to(
-            device
-        )
-        predicted_q_values = self(features)
-
-        target_q_values = []
-
-        print("predicted", predicted_q_values)
-
-        for state in states:
-            print("states", state)
-
-            score = calculate_score(state).total
-            actions = sample(state.available_actions(), 20)
-            next_states = [state.take_action(action) for action in actions]
-            rewards = [calculate_score(ns).total - score for ns in next_states]
-
-            if next_states[0].turns_remaining == 0:
-                target_q_values.append(max(rewards))
-
-            else:
-                print("before next features")
-                f = [list(get_features(ns).values()) for ns in next_states]
-                print("after calc f")
-                next_features = torch.tensor(f).to(device)
-                print("before target")
-                with torch.no_grad():
-                    next_q_values: torch.Tensor = self.target_model(next_features)
-                max_q_value, max_index = torch.max(next_q_values, dim=0)
-                reward = rewards[int(max_index.item())]
-                target_q_values.append(reward + self.gamma * max_q_value.item())
-
-        target_q_values = torch.tensor(target_q_values).reshape((-1, 1)).to(device)
-        print("target", target_q_values)
-
-        loss = self.loss_fn(predicted_q_values, target_q_values)
+        x, y = batch
+        y_pred = self(x)
+        loss = self.loss_fn(y_pred, y.reshape((-1, 1)))
+        # loss = self.loss_fn(y_pred, y)
         self.log("train_loss", loss)
-
-        print("train loss", loss)
-
-        if self.global_step % self.update_target_every == 0:
-            self.target_model.load_state_dict(self.model.state_dict())
-
         return loss
 
     def configure_optimizers(self):
-        return Adam(self.parameters(), lr=self.lr)
+        return Adam(self.parameters(), lr=0.001)
 
-    def epsilon_greedy_next_state(self, state: GameState):
-        if random() < self.epsilon:
-            return state.get_random_next_state()
+
+# %%
+def play_game(model: DQNLightning | None, epsilon: float, state: GameState):
+    while state.turns_remaining > 0:
+        actions, rewards, features = get_transitions(state)
+
+        if random() < epsilon:
+            i = randint(0, len(actions) - 1)
+
+        elif model is None or state.turns_remaining == 1:
+            max_reward = max(rewards)
+            i = choice([i for i, r in enumerate(rewards) if r == max_reward])
+
         else:
-            # TODO consider caching next states somewhere
-            next_states = list(state.get_all_next_states())
-            next_features = [get_features(state) for state in next_states]
             with torch.no_grad():
-                q_values = self.model(next_features)
-            return next_states[torch.argmax(q_values)]
+                turns_remaining = state.turns_remaining - 1
+                expected_mean_rewards = model(torch.tensor(features)).squeeze()
+                expected_total_rewards = (
+                    expected_mean_rewards * turns_remaining + torch.tensor(rewards)
+                )
+                i = expected_total_rewards.argmax().item()
 
-    def decay_epsilon(self):
-        self.epsilon = max(
-            self.epsilon_end, self.epsilon * (1 - 1 / self.epsilon_decay)
-        )
-
-    def store_state(self, state: GameState):
-        self.replay_buffer.append(state)
-
-    def train_dataloader(self):
-        return DataLoader(
-            RLDataset(len(self.replay_buffer)),  # type: ignore
-            batch_size=self.batch_size,
-            shuffle=True,
-        )
+        state = state.take_action(actions[i])
+        yield (actions[i], rewards[i], features[i], state)
 
 
-num_features = len(get_features(GameState()))
+# %%
+def play_test_games(model: DQNLightning | None, epsilon: float, num_games: int):
+    states: list[tuple[GameState, NDArray[np.float32]]] = []
+    final_scores: list[int] = []
 
-model = DQNLightning(num_features, 1)
+    for _ in tqdm(range(num_games), desc="Playing test games"):
+        game_steps = list(play_game(model, epsilon, GameState()))
+        *middle_states, final_state = [(s, f) for _, _, f, s in game_steps]
+        states.extend(middle_states)
+        final_scores.append(calculate_score(final_state[0]).total)
 
-trainer = L.Trainer(max_epochs=500)
+    print(f"Mean final score: {mean(final_scores)}")
 
-for episode in range(10000):
-    print("episode start", episode)
+    return states
 
-    state = GameState()
 
-    while state.turns_remaining > 1:
-        state = model.epsilon_greedy_next_state(state)
-        model.store_state(state)
+# %%
+seen_states = deque[tuple[GameState, NDArray[np.float32]]](maxlen=100000)
+seen_states.extend(play_test_games(None, 0.2, 1000))
 
-    model.decay_epsilon()
 
-    print("train start", episode)
+# %%
+def generate_dataset(
+    seen_states: deque[tuple[GameState, NDArray[np.float32]]],
+    model: DQNLightning | None,
+    epsilon: float,
+    num_games: int,
+):
+    sampled = sample(seen_states, num_games)
 
-    trainer.fit(model)
+    features_list = []
+    labels = []
 
-    print("episode end", episode)
+    for state, features in tqdm(sampled, desc="Generating dataset"):
+        rewards = [r for _, r, _, _ in play_game(model, epsilon, state.reset_rand())]
+
+        features_list.append(features)
+        labels.append(mean(rewards))
+
+    return TensorDataset(torch.tensor(features_list), torch.tensor(labels))
+
+
+# %%
+model = DQNLightning(len(feature_names))
+epsilon = 1.0
+
+for gen in range(1000):
+    print(f"Generation {gen}, epsilon {epsilon}, num seen states: {len(seen_states)}")
+
+    dataloader = DataLoader(
+        # TODO i dont think this makes sense to train against expected values generated with the epsilon
+        generate_dataset(seen_states, model, epsilon, 200),
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=7,
+        persistent_workers=True,
+    )
+
+    trainer = L.Trainer(max_epochs=100)
+
+    trainer.fit(model, dataloader)
+
+    # with torch.no_grad():
+    #     final_state = list(play_game(model, 0, GameState(0)))[-1][3]
+    #     test_score = calculate_score(final_state).total
+    #     print("Test score:", test_score)
+
+    epsilon = max(epsilon - 0.1, 0.1)
+    seen_states.extend(play_test_games(model, 0.0, 200))
+
+
+# %%
+# s = GameState(0)
+# while s.turns_remaining > 0:
+#     print_state(s)
+#     print("\n-----------------------------------------------------\n")
+
+#     actions, rewards, features = get_transitions(s)
+#     with torch.no_grad():
+#         q_values = model(torch.tensor(features)).squeeze()
+#         expected_rewards = q_values + torch.tensor(rewards)
+#         i = expected_rewards.argmax().item()
+#         print(i, rewards[:50], q_values[:50])
+#     print()
+#     s = s.take_action(actions[i])
+# print_state(s)

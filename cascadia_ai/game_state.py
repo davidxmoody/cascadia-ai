@@ -172,7 +172,9 @@ class GameState:
         tile = new_state.tile_supply.pop(action.tile_index)
         wildlife = new_state.wildlife_bag.pop(action.wildlife_index)
 
-        new_state.env.place_tile(action.tile_position, tile.rotate(action.tile_rotation))
+        new_state.env.place_tile(
+            action.tile_position, tile.rotate(action.tile_rotation)
+        )
 
         if action.wildlife_position is not None:
             new_state.env.place_wildlife(action.wildlife_position, wildlife)
@@ -184,5 +186,21 @@ class GameState:
         new_state.wildlife_bag.pop(0)
 
         new_state._check_overpopulation()
+
+        return new_state
+
+    def reset_rand(self):
+        new_state = deepcopy(self)
+        new_state._seed = randint(0, 2**32)
+        new_state._rand = Random(new_state._seed)
+
+        # TODO refactor to make the display separate from the bag
+        wildlife_bag_tail = new_state.wildlife_bag[4:]
+        new_state._rand.shuffle(wildlife_bag_tail)
+        new_state.wildlife_bag = new_state.wildlife_bag[:4] + wildlife_bag_tail
+
+        tile_supply_tail = new_state.tile_supply[4:]
+        new_state._rand.shuffle(tile_supply_tail)
+        new_state.tile_supply = new_state.tile_supply[:4] + tile_supply_tail
 
         return new_state
