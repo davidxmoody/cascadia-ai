@@ -49,22 +49,24 @@ class DQNLightning(L.LightningModule):
 def play_game(model: DQNLightning | None, epsilon: float, state: GameState):
     while state.turns_remaining > 0:
         actions, rewards, features = get_transitions(state)
+        max_reward = max(rewards)
+        max_indexes = [i for i, r in enumerate(rewards) if r == max_reward]
 
         if random() < epsilon:
+            # TODO exclude anything with a negative reward
             i = randint(0, len(actions) - 1)
 
-        elif model is None or state.turns_remaining == 1:
-            max_reward = max(rewards)
-            i = choice([i for i, r in enumerate(rewards) if r == max_reward])
+        elif model is None or state.turns_remaining == 1 or len(max_indexes) == 1:
+            i = choice(max_indexes)
 
         else:
             with torch.no_grad():
-                turns_remaining = state.turns_remaining - 1
-                expected_mean_rewards = model(torch.tensor(features)).squeeze()
+                discount_factor = 0.9
+                q_values = model(torch.tensor(features[max_indexes])).squeeze()
                 expected_total_rewards = (
-                    expected_mean_rewards * turns_remaining + torch.tensor(rewards)
+                    q_values * discount_factor + torch.tensor(rewards)[max_indexes]
                 )
-                i = expected_total_rewards.argmax().item()
+                i = max_indexes[expected_total_rewards.argmax().item()]
 
         state = state.take_action(actions[i])
         yield (actions[i], rewards[i], features[i], state)
@@ -87,24 +89,14 @@ def play_test_games(model: DQNLightning | None, epsilon: float, num_games: int):
 
 
 # %%
-seen_states = deque[tuple[GameState, NDArray[np.float32]]](maxlen=100000)
-seen_states.extend(play_test_games(None, 0.2, 1000))
-
-
-# %%
 def generate_dataset(
-    seen_states: deque[tuple[GameState, NDArray[np.float32]]],
-    model: DQNLightning | None,
-    epsilon: float,
-    num_games: int,
+    states_and_features: list[tuple[GameState, NDArray[np.float32]]],
 ):
-    sampled = sample(seen_states, num_games)
-
     features_list = []
     labels = []
 
-    for state, features in tqdm(sampled, desc="Generating dataset"):
-        rewards = [r for _, r, _, _ in play_game(model, epsilon, state.reset_rand())]
+    for state, features in tqdm(states_and_features, desc="Generating dataset"):
+        rewards = [r for _, r, _, _ in play_game(None, 0.0, state.reset_rand())]
 
         features_list.append(features)
         labels.append(mean(rewards))
@@ -113,32 +105,70 @@ def generate_dataset(
 
 
 # %%
+seen_states = deque[tuple[GameState, NDArray[np.float32]]](maxlen=100000)
+seen_states.extend(play_test_games(None, 0.2, 500))
+
+
+# %%
 model = DQNLightning(len(feature_names))
-epsilon = 1.0
 
-for gen in range(1000):
-    print(f"Generation {gen}, epsilon {epsilon}, num seen states: {len(seen_states)}")
+features_list = []
+labels = []
 
-    dataloader = DataLoader(
-        # TODO i dont think this makes sense to train against expected values generated with the epsilon
-        generate_dataset(seen_states, model, epsilon, 200),
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=7,
-        persistent_workers=True,
-    )
+for state, features in tqdm(sample(seen_states, 200), desc="Generating dataset"):
+    rewards = [r for _, r, _, _ in play_game(None, 0.0, state.reset_rand())]
 
-    trainer = L.Trainer(max_epochs=100)
+    features_list.append(features)
+    labels.append(float(sum(rewards)))
 
-    trainer.fit(model, dataloader)
+dataset = TensorDataset(torch.tensor(features_list), torch.tensor(labels))
 
-    # with torch.no_grad():
-    #     final_state = list(play_game(model, 0, GameState(0)))[-1][3]
-    #     test_score = calculate_score(final_state).total
-    #     print("Test score:", test_score)
+dataloader = DataLoader(
+    dataset,
+    batch_size=batch_size,
+    shuffle=True,
+    num_workers=7,
+    persistent_workers=True,
+)
 
-    epsilon = max(epsilon - 0.1, 0.1)
-    seen_states.extend(play_test_games(model, 0.0, 200))
+trainer = L.Trainer(max_epochs=200)
+
+trainer.fit(model, dataloader)
+
+
+# %%
+res = play_test_games(model, 0.0, 100)
+
+
+# # %%
+# epsilon = 0.5
+# epsilon_mult = 0.9
+# epsilon_min = 0.1
+
+
+# for gen in range(1000):
+#     seen_states.extend(play_test_games(None, epsilon, 2000))
+#     # seen_states.extend(play_test_games(model, epsilon, 200))
+#     epsilon = max(epsilon * epsilon_mult, 0.1)
+
+#     # print(f"Generation {gen}, epsilon {epsilon}, num seen states: {len(seen_states)}")
+
+#     dataloader = DataLoader(
+#         generate_dataset(sample(seen_states, 1000)),
+#         batch_size=batch_size,
+#         shuffle=True,
+#         num_workers=7,
+#         persistent_workers=True,
+#     )
+
+#     trainer = L.Trainer(max_epochs=1000)
+
+#     trainer.fit(model, dataloader)
+
+#     # with torch.no_grad():
+#     #     final_state = list(play_game(model, 0, GameState(0)))[-1][3]
+#     #     test_score = calculate_score(final_state).total
+#     #     print("Test score:", test_score)
 
 
 # %%
