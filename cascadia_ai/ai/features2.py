@@ -71,13 +71,12 @@ def unoccupied_info(env: Environment):
 
 
 def remaining_counts(state: GameState):
-    tiles = state.tiles_in_supply()
-    habitats = (h for t in tiles for h in t.habitats)
-    wslots = (w for t in tiles for w in t.wildlife_slots)
+    habitats = (h for t in state._tile_supply for h in t.habitats)
+    wslots = (w for t in state._tile_supply for w in t.wildlife_slots)
 
     yield from encode(Habitat, *habitats)
     yield from encode(Wildlife, *wslots)
-    yield from encode(Wildlife, *state.wildlife_bag)
+    yield from encode(Wildlife, *state._wildlife_supply)
 
 
 def get_state_features(state: GameState) -> list[float]:
@@ -98,7 +97,7 @@ def get_state_features(state: GameState) -> list[float]:
 
 def matching_edges(state: GameState, action: Action):
     matching = 0
-    tile = state.tile_supply[action.tile_index]
+    tile = state.tile_display[action.tile_index]
 
     for apos, atile in state.env.adjacent_tiles(action.tile_position):
         if share_edge(action.tile_position, tile, apos, atile):
@@ -122,8 +121,8 @@ def adjacent_wildlife(state: GameState, pos: HexPosition | None):
 
 
 def get_action_features(state: GameState, action: Action) -> list[float]:
-    tile = state.tile_supply[action.tile_index]
-    wildlife = state.wildlife_bag[action.wildlife_index]
+    tile = state.tile_display[action.tile_index]
+    wildlife = state.wildlife_display[action.wildlife_index]
 
     return [
         float(matching_edges(state, action)),

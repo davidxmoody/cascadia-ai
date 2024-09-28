@@ -116,12 +116,11 @@ def print_env(env: Environment):
 def print_state(state: GameState):
     score = calculate_score(state)
 
-    print(f"Seed: {state._seed}")
     print(f"Turns remaining: {state.turns_remaining}")
     print()
 
-    for i in range(4):
-        print(f"{i}: {str(state.tile_supply[i]).ljust(12)} / {state.wildlife_bag[i]}")
+    for i, (t, w) in enumerate(zip(state.tile_display, state.wildlife_display)):
+        print(f"{i}: {str(t).ljust(12)} / {w}")
     print()
 
     print_env(state.env)

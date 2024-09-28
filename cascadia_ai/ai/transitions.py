@@ -81,8 +81,8 @@ def get_transitions(state: GameState):
         reward = 0
         features_array[i, F["turns_remaining"]] -= 1
 
-        tile = state.tile_supply[action.tile_index]
-        wildlife = state.wildlife_bag[action.wildlife_index]
+        tile = state.tile_display[action.tile_index]
+        wildlife = state.wildlife_display[action.wildlife_index]
 
         if action.wildlife_position is None:
             wildlife_target = None
