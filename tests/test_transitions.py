@@ -3,13 +3,9 @@ from random import choice
 from cascadia_ai.game_state import GameState
 from cascadia_ai.ai.transitions import get_transitions
 from cascadia_ai.score import calculate_score
-from cascadia_ai.tui import print_state
 
 
-seeds = list(range(10))
-
-
-@pytest.mark.parametrize("seed", seeds)
+@pytest.mark.parametrize("seed", range(10))
 def test_get_transitions(seed: int):
     state = GameState(seed)
 
@@ -18,18 +14,10 @@ def test_get_transitions(seed: int):
         actions, rewards, _ = get_transitions(state)
 
         for action, reward in zip(actions, rewards):
-            new_state = state.take_action(action)
+            new_state = state.copy()
+            new_state.take_action(action)
             new_score = calculate_score(new_state)
-
-            # TODO only check a fraction of the returned ones to make the test faster
-
-            if reward != new_score.total - score.total:
-                print_state(state)
-                print_state(new_state)
-                print(action, reward)
-                print(score)
-                print(new_score)
 
             assert reward == new_score.total - score.total
 
-        state = state.take_action(choice(actions))
+        state.take_action(choice(actions))

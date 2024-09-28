@@ -3,7 +3,6 @@ from random import Random, choice, randint
 from typing import NamedTuple
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.environments import Environment, HexPosition, starting_tiles
-from cascadia_ai.helpers import shuffled
 from cascadia_ai.tiles import Tile, tiles
 
 
@@ -19,7 +18,7 @@ class GameState:
     _rand: Random
 
     _tile_supply: list[Tile]
-    _wildlife_supply: list[Wildlife]
+    _wildlife_supply: dict[Wildlife, int]
 
     tile_display: list[Tile]
     wildlife_display: list[Wildlife]
@@ -32,33 +31,50 @@ class GameState:
 
         self.env = Environment(self._rand.choice(starting_tiles))
 
-        shuffled_tiles = shuffled(tiles, self._rand)
-        self._tile_supply = shuffled_tiles[4:]
-        self.tile_display = shuffled_tiles[:4]
+        self._tile_supply = tiles[:]
+        self.tile_display = self._draw_tiles(4)
 
-        shuffled_wildlife = shuffled(list(Wildlife) * 20, self._rand)
-        self._wildlife_supply = shuffled_wildlife[4:]
-        self.wildlife_display = shuffled_wildlife[:4]
+        self._wildlife_supply = {w: 20 for w in Wildlife}
+        self.wildlife_display = self._draw_wildlife(4)
 
         self._check_overpopulation()
 
+    def _draw_tiles(self, num=1):
+        result = self._rand.sample(self._tile_supply, k=num)
+        for t in result:
+            self._tile_supply.remove(t)
+        return result
+
+    def _draw_wildlife(self, num=1):
+        result = self._rand.sample(
+            list(self._wildlife_supply.keys()),
+            counts=list(self._wildlife_supply.values()),
+            k=num,
+        )
+        for w in result:
+            self._wildlife_supply[w] -= 1
+        return result
+
     def _check_overpopulation(self):
         while len(set(self.wildlife_display)) == 1:
-            self.replace_wildlife(list(range(4)))
+            self._replace_wildlife(list(range(4)))
 
-    def replace_wildlife(self, indexes: list[int]):
+    def _replace_wildlife(self, indexes: list[int]):
         removed = [self.wildlife_display[i] for i in indexes]
-
         for i in indexes:
-            self.wildlife_display[i] = self._wildlife_supply.pop(0)
-
+            self.wildlife_display[i] = self._draw_wildlife()[0]
         for w in removed:
-            insertion_index = self._rand.randint(0, len(self._wildlife_supply))
-            self._wildlife_supply.insert(insertion_index, w)
+            self._wildlife_supply[w] += 1
 
     @property
     def turns_remaining(self):
         return 23 - self.env.num_tiles_placed
+
+    def reset_rand(self):
+        self._rand = Random()
+
+    def copy(self):
+        return deepcopy(self)
 
     def validate_action(self, action: Action):
         if self.turns_remaining <= 0:
@@ -151,51 +167,27 @@ class GameState:
             wildlife_position,
         )
 
-    def get_all_next_states(self):
-        return [self.take_action(action) for action in self.available_actions()]
-
-    def get_random_next_state(self):
-        return self.take_action(choice(self.available_actions()))
-
     def take_action(self, action: Action):
         self.validate_action(action)
 
-        new_state = deepcopy(self)
-
         if action.tile_index != action.wildlife_index:
-            new_state.nature_tokens -= 1
+            self.nature_tokens -= 1
 
-        tile = new_state.tile_display.pop(action.tile_index)
-        wildlife = new_state.wildlife_display.pop(action.wildlife_index)
+        tile = self.tile_display.pop(action.tile_index)
+        wildlife = self.wildlife_display.pop(action.wildlife_index)
 
-        new_state.env.place_tile(
-            action.tile_position, tile.rotate(action.tile_rotation)
-        )
+        self.env.place_tile(action.tile_position, tile.rotate(action.tile_rotation))
 
         if action.wildlife_position is not None:
-            new_state.env.place_wildlife(action.wildlife_position, wildlife)
+            self.env.place_wildlife(action.wildlife_position, wildlife)
 
-            if new_state.env.tiles[action.wildlife_position].nature_token_reward:
-                new_state.nature_tokens += 1
+            if self.env.tiles[action.wildlife_position].nature_token_reward:
+                self.nature_tokens += 1
 
-        new_state.tile_display.pop(0)
-        while len(new_state.tile_display) < 4:
-            new_state.tile_display.append(new_state._tile_supply.pop(0))
+        self.tile_display.pop(0)
+        self.tile_display.extend(self._draw_tiles(2))
 
-        new_state.wildlife_display.pop(0)
-        while len(new_state.wildlife_display) < 4:
-            new_state.wildlife_display.append(new_state._wildlife_supply.pop(0))
+        self.wildlife_display.pop(0)
+        self.wildlife_display.extend(self._draw_wildlife(2))
 
-        new_state._check_overpopulation()
-
-        return new_state
-
-    def reset_rand(self):
-        # TODO maybe make this just modify the original, not sure it ever needs to copy
-        new_state = deepcopy(self)
-        new_state._rand = Random()
-
-        new_state._rand.shuffle(new_state._tile_supply)
-        new_state._rand.shuffle(new_state._wildlife_supply)
-
-        return new_state
+        self._check_overpopulation()
