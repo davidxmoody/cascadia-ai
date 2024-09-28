@@ -1,5 +1,4 @@
 import pandas as pd
-from time import time
 from tqdm import tqdm
 from cascadia_ai.game_state import GameState
 from cascadia_ai.score import calculate_score
@@ -10,17 +9,12 @@ iterations = 100
 
 results: list[dict] = []
 
-for seed in tqdm(range(iterations), desc="Playing games"):
-    start_time = time()
-    final_state = play_game(GameState(seed))
-    duration = time() - start_time
-
+for _ in tqdm(range(iterations), desc="Playing games"):
+    final_state = play_game(GameState())
     score = calculate_score(final_state)
 
     results.append(
         {
-            "seed": seed,
-            "duration": round(duration * 1000),
             **{k.value: v for k, v in score.wildlife.items()},
             **{k.value: v for k, v in score.habitat.items()},
             "nt": score.nature_tokens,

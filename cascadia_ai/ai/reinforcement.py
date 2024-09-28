@@ -97,7 +97,6 @@ def generate_dataset(
     labels = []
 
     for state, features in tqdm(states_and_features, desc="Generating dataset"):
-        state.reset_rand()
         rewards = [r for _, r, _, _ in play_game(None, 0.0, state)]
 
         features_list.append(features)
@@ -118,7 +117,6 @@ features_list = []
 labels = []
 
 for state, features in tqdm(sample(seen_states, 200), desc="Generating dataset"):
-    state.reset_rand()
     rewards = [r for _, r, _, _ in play_game(None, 0.0, state)]
 
     features_list.append(features)

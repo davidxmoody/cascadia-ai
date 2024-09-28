@@ -1,13 +1,11 @@
-import pytest
 from random import choice
 from cascadia_ai.game_state import GameState
 from cascadia_ai.ai.transitions import get_transitions
 from cascadia_ai.score import calculate_score
 
 
-@pytest.mark.parametrize("seed", range(10))
-def test_get_transitions(seed: int):
-    state = GameState(seed)
+def test_get_transitions():
+    state = GameState()
 
     while state.turns_remaining > 0:
         score = calculate_score(state)

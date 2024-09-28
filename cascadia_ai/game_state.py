@@ -1,5 +1,5 @@
 from copy import deepcopy
-from random import Random, choice, randint
+from random import choice, sample
 from typing import NamedTuple
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.environments import Environment, HexPosition, starting_tiles
@@ -15,8 +15,6 @@ class Action(NamedTuple):
 
 
 class GameState:
-    _rand: Random
-
     _tile_supply: list[Tile]
     _wildlife_supply: dict[Wildlife, int]
 
@@ -26,10 +24,8 @@ class GameState:
     env: Environment
     nature_tokens: int = 0
 
-    def __init__(self, seed: int | None = None):
-        self._rand = Random(seed if seed is not None else randint(0, 2**32))
-
-        self.env = Environment(self._rand.choice(starting_tiles))
+    def __init__(self):
+        self.env = Environment(choice(starting_tiles))
 
         self._tile_supply = tiles[:]
         self.tile_display = self._draw_tiles(4)
@@ -40,13 +36,13 @@ class GameState:
         self._check_overpopulation()
 
     def _draw_tiles(self, num=1):
-        result = self._rand.sample(self._tile_supply, k=num)
+        result = sample(self._tile_supply, k=num)
         for t in result:
             self._tile_supply.remove(t)
         return result
 
     def _draw_wildlife(self, num=1):
-        result = self._rand.sample(
+        result = sample(
             list(self._wildlife_supply.keys()),
             counts=list(self._wildlife_supply.values()),
             k=num,
@@ -69,9 +65,6 @@ class GameState:
     @property
     def turns_remaining(self):
         return 23 - self.env.num_tiles_placed
-
-    def reset_rand(self):
-        self._rand = Random()
 
     def copy(self):
         return deepcopy(self)
