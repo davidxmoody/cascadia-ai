@@ -96,6 +96,7 @@ class GameState:
                 if not self.env.can_place_wildlife(action.wildlife_position, wildlife):
                     raise Exception("Cannot place wildlife there")
 
+    # TODO remove this method
     def available_actions(self):
         actions: list[Action] = []
 
@@ -128,37 +129,6 @@ class GameState:
                         )
 
         return actions
-
-    def get_random_action(self):
-        tile_index = choice(range(4))
-        tile = self.tile_display[tile_index]
-
-        wildlife_index = tile_index  # TODO add nature token option
-        wildlife = self.wildlife_display[wildlife_index]
-
-        tile_position = choice(list(self.env.all_adjacent_empty()))
-
-        wildlife_positions = [
-            p
-            for p, tile in self.env.unoccupied_tiles()
-            if wildlife in tile.wildlife_slots
-        ]
-        if wildlife in tile.wildlife_slots:
-            wildlife_positions.append(tile_position)
-
-        wildlife_position = (
-            choice(wildlife_positions) if len(wildlife_positions) else None
-        )
-
-        rotation = choice(range(1 if tile.single_habitat else 6))
-
-        return Action(
-            tile_index,
-            tile_position,
-            rotation,
-            wildlife_index,
-            wildlife_position,
-        )
 
     def take_action(self, action: Action):
         self.validate_action(action)

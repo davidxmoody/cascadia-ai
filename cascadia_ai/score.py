@@ -1,12 +1,20 @@
 from typing import Generator, NamedTuple
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import Environment, HexPosition, hex_steps
+from cascadia_ai.environments import (
+    Environment,
+    HexPosition,
+    adjacent_positions,
+    hex_steps,
+)
 from cascadia_ai.game_state import GameState
 
 
-class ScoreTable(list):
-    def __getitem__(self, i):
-        return super().__getitem__(-1 if i >= len(self) else i)
+class ScoreTable:
+    def __init__(self, data: list[int]):
+        self._data = data
+
+    def __getitem__(self, i: int):
+        return self._data[i if i < len(self._data) else -1]
 
 
 scoring_bear_pairs = ScoreTable([0, 4, 11, 19, 27])
@@ -57,28 +65,35 @@ def iter_elk_line_options(
             yield from iter_elk_line_options(group - line, acc + [len(line)])
 
 
+def get_max_elk_group_score(group: set[HexPosition]):
+    return max(
+        sum(scoring_elk_line[line] for line in lines)
+        for lines in iter_elk_line_options(group)
+    )
+
+
 def calculate_elk_score(env: Environment):
-    total_score = 0
+    return sum(
+        get_max_elk_group_score(group) for group in env.wildlife_groups(Wildlife.ELK)
+    )
 
-    for group in env.wildlife_groups(Wildlife.ELK):
-        max_group_score = 0
 
-        for lines in iter_elk_line_options(group):
-            max_group_score = max(
-                max_group_score,
-                sum(scoring_elk_line[line] for line in lines),
-            )
-
-        total_score += max_group_score
-
-    return total_score
+def is_valid_salmon_run(group: set[HexPosition]):
+    for pos in group:
+        num_adj = 0
+        for adj in adjacent_positions(pos):
+            if adj in group:
+                num_adj += 1
+            if num_adj > 2:
+                return False
+    return True
 
 
 def calculate_salmon_score(env: Environment):
     return sum(
         scoring_salmon_run[len(group)]
         for group in env.wildlife_groups(Wildlife.SALMON)
-        if all(env.adjacent_wildlife_counts(pos)[Wildlife.SALMON] <= 2 for pos in group)
+        if is_valid_salmon_run(group)
     )
 
 

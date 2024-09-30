@@ -74,12 +74,18 @@ class Environment:
             if apos in self.tiles
         )
 
-    def adjacent_wildlife(self, pos: HexPosition):
+    def adjacent_wildlife(self, pos: HexPosition, filter: Wildlife | None = None):
         return (
             (apos, self.wildlife[apos])
             for apos in adjacent_positions(pos)
             if apos in self.wildlife
+            and (filter is None or filter == self.wildlife[apos])
         )
+
+    def has_adjacent_wildlife(self, pos: HexPosition, filter: Wildlife):
+        for _ in self.adjacent_wildlife(pos, filter):
+            return True
+        return False
 
     def adjacent_unoccupied_tiles(self, pos: HexPosition):
         return (
