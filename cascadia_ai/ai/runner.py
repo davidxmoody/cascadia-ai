@@ -23,4 +23,5 @@ for _ in tqdm(range(iterations), desc="Playing games"):
     )
 
 df = pd.DataFrame(results)
-df.to_csv("results/greedy.tsv", sep="\t", index=False)
+
+print(df.mean())

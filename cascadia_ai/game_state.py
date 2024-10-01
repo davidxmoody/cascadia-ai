@@ -13,6 +13,9 @@ class Action(NamedTuple):
     wildlife_index: int
     wildlife_position: HexPosition | None
 
+    def nt_spent(self):
+        return self.tile_index != self.wildlife_index
+
 
 class GameState:
     _tile_supply: list[Tile]
