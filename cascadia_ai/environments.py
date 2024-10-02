@@ -161,7 +161,7 @@ class Environment:
             visited.update(current_group)
             groups.append(current_group)
 
-        return groups
+        return sorted(groups, key=len, reverse=True)
 
     def can_place_tile(self, pos: HexPosition):
         return pos not in self.tiles and any(
