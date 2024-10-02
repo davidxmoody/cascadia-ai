@@ -157,3 +157,5 @@ class GameState:
         self.wildlife_display.extend(self._draw_wildlife(2))
 
         self._check_overpopulation()
+
+        return self
