@@ -13,6 +13,7 @@ class Action(NamedTuple):
     wildlife_index: int
     wildlife_position: HexPosition | None
 
+    @property
     def nt_spent(self):
         return self.tile_index != self.wildlife_index
 
