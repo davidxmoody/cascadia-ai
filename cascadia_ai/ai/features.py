@@ -143,9 +143,6 @@ class StateFeatures:
                 wildlife_target = self._state.env.tiles[action.wildlife_position]
 
             if action.nt_spent:
-                if i == 0:
-                    print("nt spent")
-                    print(action)
                 features_array[i, F["nature_tokens"]] -= 1
 
             if placed_tile.nature_token_reward:
@@ -249,9 +246,6 @@ class StateFeatures:
                     )
                 }
 
-                if i == 3:
-                    print(connected_positions)
-
                 group_sizes = [1]
                 for group in self._wgroups[placed_wildlife]:
                     if group.isdisjoint(connected_positions):
@@ -287,27 +281,27 @@ class StateFeatures:
         )
 
 
-# %%
-s = GameState()
+# # %%
+# s = GameState()
 
-# %%
-actions = [a for a, _ in get_actions(s)]
+# # %%
+# actions = [a for a, _ in get_actions(s)]
 
-sf = StateFeatures(s)
+# sf = StateFeatures(s)
 
-next_states = [s.copy().take_action(a) for a in actions]
+# next_states = [s.copy().take_action(a) for a in actions]
 
-next_features = sf.get_next_features(actions)
+# next_features = sf.get_next_features(actions)
 
-# %%
-for i, ns in enumerate(next_states):
-    nsf = StateFeatures(ns)
-    nsfd = nsf._data
-    nsfd2 = next_features[i]
+# # %%
+# for i, ns in enumerate(next_states):
+#     nsf = StateFeatures(ns)
+#     nsfd = nsf._data
+#     nsfd2 = next_features[i]
 
-    if not np.array_equal(nsfd, nsfd2):
-        print(i)
-        print(actions[i])
-        for fi, fn in enumerate(feature_names):
-            print(f"{fn:<24}: {nsfd[fi]:>4} {nsfd2[fi]:>4} {nsfd[fi] == nsfd2[fi]}")
-        break
+#     if not np.array_equal(nsfd, nsfd2):
+#         print(i)
+#         print(actions[i])
+#         for fi, fn in enumerate(feature_names):
+#             print(f"{fn:<24}: {nsfd[fi]:>4} {nsfd2[fi]:>4} {nsfd[fi] == nsfd2[fi]}")
+#         break

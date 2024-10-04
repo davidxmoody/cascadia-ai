@@ -7,10 +7,12 @@ import lightning as L
 from random import choice, random
 from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions
-from cascadia_ai.ai.features2 import get_state_features
+from cascadia_ai.ai.features import StateFeatures
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.game_state import Action, GameState
 from cascadia_ai.score import calculate_score
+import numpy as np
+import pandas as pd
 
 
 # %%
@@ -58,10 +60,10 @@ def generate_realistic_states(epsilon: float, num: int):
         yield play_game_greedy_epsilon_biased(epsilon, i % 19 + 1)
 
 
-realistic_states = list(generate_realistic_states(0.1, 10000))
+realistic_states = list(generate_realistic_states(0.1, 100000))
 
-with open("data/realistic_states.pkl", "wb") as f:
-    pickle.dump(realistic_states, f)
+# with open("data/realistic_states.pkl", "wb") as f:
+#     pickle.dump(realistic_states, f)
 
 
 # %%
@@ -89,8 +91,8 @@ greedy_played_games = [
 ]
 
 
-with open("data/greedy_played_games.pkl", "wb") as f:
-    pickle.dump(greedy_played_games, f)
+# with open("data/greedy_played_games.pkl", "wb") as f:
+#     pickle.dump(greedy_played_games, f)
 
 
 # %%
@@ -99,11 +101,13 @@ with open("data/greedy_played_games.pkl", "rb") as f:
 
 
 # %%
-features = torch.tensor(
-    [
-        get_state_features(s1)
-        for s1, _ in tqdm(greedy_played_games, desc="Getting features")
-    ]
+features = torch.from_numpy(
+    np.vstack(
+        [
+            StateFeatures(s1)._data
+            for s1, _ in tqdm(greedy_played_games, desc="Getting features")
+        ]
+    )
 )
 
 labels = torch.tensor(
@@ -134,7 +138,6 @@ class DQNLightning(L.LightningModule):
         x, y = batch
         y_pred = self(x)
         loss = self.loss_fn(y_pred, y.reshape((-1, 1)))
-        # loss = self.loss_fn(y_pred, y)
         self.log("train_loss", loss)
         return loss
 
@@ -163,18 +166,44 @@ trainer.fit(model, dataloader)
 
 
 # %%
-results = []
-for _ in tqdm(range(100), desc="Playing test games"):
+def play_test_game(model: DQNLightning, state: GameState, gamma: float):
     state = GameState()
+
     while state.turns_remaining > 0:
-        # TODO in final turn, just use max reward
-        actions_and_rewards = list(get_actions(state))
-        rewards = torch.tensor([float(r) for _, r in actions_and_rewards])
-        next_states = [state.copy().take_action(a) for a, _ in actions_and_rewards]
-        next_features = torch.tensor([get_state_features(s) for s in next_states])
-        with torch.no_grad():
-            q_values = model(next_features).squeeze()
-            expected_rewards = q_values * 0.9 + rewards
+        # TODO consider refactoring get_actions to return separate lists
+        actions, rewards = zip(*get_actions(state))
+
+        if state.turns_remaining == 1:
+            i = rewards.index(max(rewards))
+
+        else:
+            next_features = torch.from_numpy(
+                StateFeatures(state).get_next_features(actions)
+            )
+            with torch.no_grad():
+                q_values = model(next_features).squeeze()
+            expected_rewards = q_values * gamma + torch.tensor(rewards)
             i = expected_rewards.argmax().item()
-        state = state.take_action(actions_and_rewards[i][0])
-    results.append(calculate_score(state))
+
+        state.take_action(actions[i])
+
+    return calculate_score(state)
+
+
+results = []
+for i in tqdm(range(1000), desc="Playing test games"):
+    gamma = (i // 50) / 10
+    score = play_test_game(model, GameState(), gamma)
+    results.append(
+        {
+            "gamma": gamma,
+            **{k.value: v for k, v in score.wildlife.items()},
+            **{k.value: v for k, v in score.habitat.items()},
+            "nt": score.nature_tokens,
+            "total": score.total,
+        }
+    )
+
+df = pd.DataFrame(results)
+# df.describe().T
+# px.bar(df.groupby("gamma").mean().reset_index(), x="gamma", y="total").show()
