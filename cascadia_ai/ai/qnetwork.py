@@ -166,7 +166,7 @@ trainer.fit(model, dataloader)
 
 
 # %%
-def play_test_game(model: DQNLightning, state: GameState, gamma: float):
+def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
     state = GameState()
 
     while state.turns_remaining > 0:
@@ -190,9 +190,16 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float):
     return calculate_score(state)
 
 
+# %%
+def float_range(start, stop, step, repeat=1):
+    while start <= stop:
+        for _ in range(repeat):
+            yield int(start * 100) / 100
+        start += step
+
+
 results = []
-for i in tqdm(range(1000), desc="Playing test games"):
-    gamma = (i // 50) / 10
+for gamma in tqdm(float_range(0.7, 1.2, 0.02, 50), desc="Playing test games"):
     score = play_test_game(model, GameState(), gamma)
     results.append(
         {
