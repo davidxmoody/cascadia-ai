@@ -1,5 +1,4 @@
 import numpy as np
-from cascadia_ai.ai.actions import get_actions
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import HexPosition, share_edge
 from cascadia_ai.game_state import Action, GameState

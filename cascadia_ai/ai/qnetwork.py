@@ -1,5 +1,6 @@
 import pickle
-from torch.utils.data import DataLoader, TensorDataset
+from lightning.pytorch.loggers import TensorBoardLogger
+from torch.utils.data import DataLoader, TensorDataset, random_split
 from torch.optim.adam import Adam
 import torch
 import torch.nn as nn
@@ -141,6 +142,12 @@ class DQNLightning(L.LightningModule):
         self.log("train_loss", loss)
         return loss
 
+    def validation_step(self, batch):  # type: ignore
+        x, y = batch
+        y_pred = self(x)
+        loss = self.loss_fn(y_pred, y.reshape((-1, 1)))
+        self.log("val_loss", loss)
+
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=0.001)
 
@@ -148,21 +155,35 @@ class DQNLightning(L.LightningModule):
 # %%
 num_features = len(features[0])
 
-model = DQNLightning(num_features)
-
 dataset = TensorDataset(features, labels)
 
-dataloader = DataLoader(
-    dataset,
+train_size = int(0.8 * len(dataset))
+val_size = len(dataset) - train_size
+
+train_ds, val_ds = random_split(dataset, [train_size, val_size])
+
+train_loader = DataLoader(
+    train_ds,
     batch_size=100,
     shuffle=True,
     num_workers=7,
     persistent_workers=True,
 )
 
-trainer = L.Trainer(max_epochs=200)
+val_loader = DataLoader(
+    val_ds,
+    batch_size=100,
+    num_workers=7,
+    persistent_workers=True,
+)
 
-trainer.fit(model, dataloader)
+logger = TensorBoardLogger("tb_logs", name="qnetwork")
+
+trainer = L.Trainer(max_epochs=100, logger=logger)
+
+model = DQNLightning(num_features)
+
+trainer.fit(model, train_loader, val_loader)
 
 
 # %%
@@ -187,7 +208,23 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
 
         state.take_action(actions[i])
 
-    return calculate_score(state)
+    return state
+
+
+# %%
+model_played_games = []
+for state in tqdm(realistic_states[:1000], desc="Model playing games"):
+    played_state = play_test_game(model, state.copy())
+    model_played_games.append((state, played_state))
+
+
+with open("data/model_played_games.pkl", "wb") as f:
+    pickle.dump(model_played_games, f)
+
+
+# %%
+with open("data/model_played_games.pkl", "rb") as f:
+    model_played_games = pickle.load(f)
 
 
 # %%
@@ -200,7 +237,7 @@ def float_range(start, stop, step, repeat=1):
 
 results = []
 for gamma in tqdm(float_range(0.7, 1.2, 0.02, 50), desc="Playing test games"):
-    score = play_test_game(model, GameState(), gamma)
+    score = calculate_score(play_test_game(model, GameState(), gamma))
     results.append(
         {
             "gamma": gamma,
