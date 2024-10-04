@@ -8,12 +8,14 @@ import lightning as L
 from random import choice, random
 from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions
-from cascadia_ai.ai.features import StateFeatures
+from cascadia_ai.ai.features import StateFeatures, feature_names
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.game_state import Action, GameState
 from cascadia_ai.score import calculate_score
 import numpy as np
 import pandas as pd
+import plotly.express as px
+from sklearn.inspection import permutation_importance
 
 
 # %%
@@ -203,6 +205,10 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
             )
             with torch.no_grad():
                 q_values = model(next_features).squeeze()
+                # expected_mean_rewards = model(next_features).squeeze()
+            # expected_rewards = expected_mean_rewards * (
+                # gamma * (state.turns_remaining - 1)
+            # ) + torch.tensor(rewards)
             expected_rewards = q_values * gamma + torch.tensor(rewards)
             i = expected_rewards.argmax().item()
 
@@ -235,12 +241,13 @@ def float_range(start, stop, step, repeat=1):
         start += step
 
 
+# %%
 results = []
-for gamma in tqdm(float_range(0.7, 1.2, 0.02, 50), desc="Playing test games"):
-    score = calculate_score(play_test_game(model, GameState(), gamma))
+# for gamma in tqdm(float_range(0.7, 1.2, 0.02, 50), desc="Playing test games"):
+for _ in tqdm(range(100), desc="Playing test games"):
+    score = calculate_score(play_test_game(model, GameState()))
     results.append(
         {
-            "gamma": gamma,
             **{k.value: v for k, v in score.wildlife.items()},
             **{k.value: v for k, v in score.habitat.items()},
             "nt": score.nature_tokens,
@@ -249,5 +256,50 @@ for gamma in tqdm(float_range(0.7, 1.2, 0.02, 50), desc="Playing test games"):
     )
 
 df = pd.DataFrame(results)
+df.mean().T
 # df.describe().T
 # px.bar(df.groupby("gamma").mean().reset_index(), x="gamma", y="total").show()
+
+
+# %%
+class SklearnWrapper:
+    def __init__(self, model):
+        self.model = model
+
+    def fit(self, X, y):
+        pass
+
+    def predict(self, X):
+        with torch.no_grad():
+            return self.model(torch.FloatTensor(X)).numpy()
+
+
+wrapper_model = SklearnWrapper(model)
+
+# X = pd.DataFrame(features)
+# X.columns = feature_names
+
+results = permutation_importance(
+    wrapper_model, features, labels, n_repeats=30, scoring="neg_mean_squared_error"
+)
+
+feature_importance_df = pd.DataFrame(
+    {"feature_name": feature_names, "importance": results["importances_mean"]}
+)
+
+feature_importance_df = feature_importance_df.sort_values(
+    by="importance", ascending=False
+)
+
+fig = px.bar(
+    feature_importance_df,
+    x="importance",
+    y="feature_name",
+    orientation="h",
+    title="Permutation Importance of Features",
+    labels={"importance": "Permutation Importance", "feature_name": "Features"},
+    text="importance",
+)
+
+fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+fig.show()
