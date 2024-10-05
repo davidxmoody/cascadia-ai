@@ -1,3 +1,4 @@
+from collections import Counter
 import numpy as np
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import HexPosition, share_edge
@@ -13,7 +14,7 @@ feature_names = [
         for h in Habitat
         for suffix in [
             "largest_area",
-            "num_in_remaining",
+            "remaining_fraction",
         ]
     ),
     *(
@@ -29,7 +30,7 @@ feature_names = [
             "group_size_6",
             "group_size_7",
             "num_unoccupied_slots",
-            "num_in_remaining",
+            "remaining_fraction",
         ]
     ),
 ]
@@ -57,6 +58,13 @@ class StateFeatures:
         self._wgroups = {w: state.env.wildlife_groups(w) for w in Wildlife}
         self._unoccupied = list(state.env.unoccupied_tiles())
 
+        self._remaining_wcounts = Counter(state._wildlife_supply)
+        self._remaining_wcounts.update(state.wildlife_display)
+
+        self._remaining_hcounts = Counter(
+            h for t in (state._tile_supply + state.tile_display) for h in t.habitats
+        )
+
         self["turns_remaining"] = state.turns_remaining
         self["nature_tokens"] = state.nature_tokens
         self["unclaimed_nt_rewards"] = sum(
@@ -66,10 +74,8 @@ class StateFeatures:
         for h in Habitat:
             self[f"{h.value}_largest_area"] = len(self._hgroups[h][0])
 
-            self[f"{h.value}_num_in_remaining"] = sum(
-                h == h2
-                for tile in (state._tile_supply + state.tile_display[2:])
-                for h2 in tile.habitats
+            self[f"{h.value}_remaining_fraction"] = (
+                self._remaining_hcounts[h] / self._remaining_hcounts.total()
             )
 
         for w in Wildlife:
@@ -82,8 +88,8 @@ class StateFeatures:
                 w in t.wildlife_slots for _, t in self._unoccupied
             )
 
-            self[f"{w.value}_num_in_remaining"] = state._wildlife_supply[w] + sum(
-                w == w2 for w2 in state.wildlife_display[2:]
+            self[f"{w.value}_remaining_fraction"] = (
+                self._remaining_wcounts[w] / self._remaining_wcounts.total()
             )
 
     def get_next_features(self, actions: list[Action]):
@@ -145,12 +151,22 @@ class StateFeatures:
             for k, v in hvalues.items():
                 features_array[i, k] = v
 
-            for tile in self._state.tile_display[2:]:
-                for h in tile.habitats:
-                    features_array[i, F[f"{h.value}_num_in_remaining"]] -= 1
+            remaining_hcounts = self._remaining_hcounts.copy()
+            for ti in [action.tile_index, 1 if action.tile_index == 0 else 0]:
+                for h in self._state.tile_display[ti].habitats:
+                    remaining_hcounts[h] -= 1
+            for h in Habitat:
+                features_array[i, F[f"{h.value}_remaining_fraction"]] = (
+                    remaining_hcounts[h] / remaining_hcounts.total()
+                )
 
-            for w in self._state.wildlife_display[2:]:
-                features_array[i, F[f"{w.value}_num_in_remaining"]] -= 1
+            remaining_wcounts = self._remaining_wcounts.copy()
+            for wi in [action.wildlife_index, 1 if action.wildlife_index == 0 else 0]:
+                remaining_wcounts[self._state.wildlife_display[wi]] -= 1
+            for w in Wildlife:
+                features_array[i, F[f"{w.value}_remaining_fraction"]] = (
+                    remaining_wcounts[w] / remaining_wcounts.total()
+                )
 
             if action.tile_position != action.wildlife_position:
                 for w in placed_tile.wildlife_slots:
