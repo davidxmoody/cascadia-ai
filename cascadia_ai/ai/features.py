@@ -21,18 +21,16 @@ feature_names = [
         f"{w.value}_{suffix}"
         for w in Wildlife
         for suffix in [
-            "group_size_0",
-            "group_size_1",
-            "group_size_2",
-            "group_size_3",
-            "group_size_4",
-            "group_size_5",
-            "group_size_6",
-            "group_size_7",
             "num_unoccupied_slots",
             "remaining_fraction",
         ]
     ),
+    "num_bear_pairs",
+    "num_bear_singles",
+    "num_elk",
+    "num_salmon",
+    "num_hawks",
+    "num_foxes",
 ]
 
 F = {name: i for i, name in enumerate(feature_names)}
@@ -58,6 +56,8 @@ class StateFeatures:
         self._wgroups = {w: state.env.wildlife_groups(w) for w in Wildlife}
         self._unoccupied = list(state.env.unoccupied_tiles())
 
+        self._wcounts = Counter(state.env.wildlife.values())
+
         self._remaining_wcounts = Counter(state._wildlife_supply)
         self._remaining_wcounts.update(state.wildlife_display)
 
@@ -79,10 +79,10 @@ class StateFeatures:
             )
 
         for w in Wildlife:
-            group_sizes = [len(g) for g in self._wgroups[w]]
+            # group_sizes = [len(g) for g in self._wgroups[w]]
 
-            for i in range(1, 8):
-                self[f"{w.value}_group_size_{i}"] = sum(gs == i for gs in group_sizes)
+            # for i in range(1, 8):
+            #     self[f"{w.value}_group_size_{i}"] = sum(gs == i for gs in group_sizes)
 
             self[f"{w.value}_num_unoccupied_slots"] = sum(
                 w in t.wildlife_slots for _, t in self._unoccupied
@@ -91,6 +91,15 @@ class StateFeatures:
             self[f"{w.value}_remaining_fraction"] = (
                 self._remaining_wcounts[w] / self._remaining_wcounts.total()
             )
+
+        bear_group_sizes = [len(g) for g in self._wgroups[Wildlife.BEAR]]
+        self["num_bear_pairs"] = sum(gs == 2 for gs in bear_group_sizes)
+        self["num_bear_singles"] = sum(gs == 1 for gs in bear_group_sizes)
+
+        self["num_elk"] = self._wcounts[Wildlife.ELK]
+        self["num_salmon"] = self._wcounts[Wildlife.SALMON]
+        self["num_hawks"] = self._wcounts[Wildlife.HAWK]
+        self["num_foxes"] = self._wcounts[Wildlife.FOX]
 
     def get_next_features(self, actions: list[Action]):
         hcache: dict[tuple[int, HexPosition, int], dict[int, int]] = {}
@@ -175,29 +184,31 @@ class StateFeatures:
                     for w in wildlife_target.wildlife_slots:
                         features_array[i, F[f"{w.value}_num_unoccupied_slots"]] -= 1
 
-            # TODO cache this and work out a better way to cache things
             if action.wildlife_position is not None:
                 placed_wildlife = self._state.wildlife_display[action.wildlife_index]
 
-                connected_positions = {
-                    pos
-                    for pos, _ in self._state.env.adjacent_wildlife(
-                        action.wildlife_position, placed_wildlife
-                    )
-                }
+                match placed_wildlife:
+                    case Wildlife.BEAR:
+                        # Assume that actions that would invalidate existing groups aren't passed in
+                        if self._state.env.has_adjacent_wildlife(
+                            action.wildlife_position, Wildlife.BEAR
+                        ):
+                            features_array[i, F["num_bear_pairs"]] += 1
+                            features_array[i, F["num_bear_singles"]] -= 1
+                        else:
+                            features_array[i, F["num_bear_singles"]] += 1
 
-                group_sizes = [1]
-                for group in self._wgroups[placed_wildlife]:
-                    if group.isdisjoint(connected_positions):
-                        group_sizes.append(len(group))
-                    else:
-                        group_sizes[0] += len(group)
-                group_sizes.sort(reverse=True)
+                    case Wildlife.ELK:
+                        features_array[i, F["num_elk"]] += 1
 
-                for j in range(1, 8):
-                    features_array[i, F[f"{placed_wildlife.value}_group_size_{j}"]] = (
-                        sum(gs == j for gs in group_sizes)
-                    )
+                    case Wildlife.SALMON:
+                        features_array[i, F["num_salmon"]] += 1
+
+                    case Wildlife.HAWK:
+                        features_array[i, F["num_hawks"]] += 1
+
+                    case Wildlife.FOX:
+                        features_array[i, F["num_foxes"]] += 1
 
         return features_array
 
