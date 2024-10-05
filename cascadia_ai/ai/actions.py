@@ -111,7 +111,7 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
                 )
 
             else:
-                return -1000
+                return None
 
         case Wildlife.ELK:
             groups = state.env.wildlife_groups(Wildlife.ELK)
@@ -134,7 +134,7 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
             new_group = set.union({wpos}, *connected_groups)
 
             if not is_valid_salmon_run(new_group):
-                return -1000
+                return None
 
             partial_score_before = sum(
                 scoring_salmon_run[len(group)] for group in connected_groups
@@ -149,7 +149,7 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
             connected_groups = find_connected_groups(groups, wpos)
 
             if len(connected_groups):
-                return -1000
+                return None
 
             num_singles_before = sum(len(g) == 1 for g in groups)
 
@@ -170,7 +170,7 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
 
 
 def get_actions(state: GameState):
-    wcache: dict[tuple[Wildlife, HexPosition], int] = {}
+    wcache: dict[tuple[Wildlife, HexPosition], int | None] = {}
 
     for tindex, tpos, trot, treward in tile_options(state):
         wplaced = False
@@ -186,7 +186,7 @@ def get_actions(state: GameState):
                     wreward = calculate_wreward(state, wildlife, wpos)
                     wcache[key] = wreward
 
-                if wreward >= 0:
+                if wreward is not None:
                     wplaced = True
                     yield (
                         Action(tindex, tpos, trot, windex, wpos),
