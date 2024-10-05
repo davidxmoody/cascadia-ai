@@ -97,21 +97,21 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
     match wildlife:
         case Wildlife.BEAR:
             groups = state.env.wildlife_groups(Wildlife.BEAR)
-            num_bear_pairs_before = sum(len(g) == 2 for g in groups)
-
             connected_groups = find_connected_groups(groups, wpos)
 
-            if len(connected_groups) == 1 and len(connected_groups[0]) == 1:
-                num_bear_pairs_after = num_bear_pairs_before + 1
-            else:
-                num_bear_pairs_after = num_bear_pairs_before - sum(
-                    len(g) == 2 for g in connected_groups
+            if len(connected_groups) == 0:
+                reward = 0
+
+            elif len(connected_groups) == 1 and len(connected_groups[0]) == 1:
+                num_bear_pairs_before = sum(len(g) == 2 for g in groups)
+
+                reward = (
+                    scoring_bear_pairs[num_bear_pairs_before + 1]
+                    - scoring_bear_pairs[num_bear_pairs_before]
                 )
 
-            reward = (
-                scoring_bear_pairs[num_bear_pairs_after]
-                - scoring_bear_pairs[num_bear_pairs_before]
-            )
+            else:
+                reward = -1000
 
         case Wildlife.ELK:
             groups = state.env.wildlife_groups(Wildlife.ELK)
@@ -131,36 +131,34 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
             groups = state.env.wildlife_groups(Wildlife.SALMON)
             connected_groups = find_connected_groups(groups, wpos)
 
-            partial_score_before = sum(
-                scoring_salmon_run[len(group)]
-                for group in connected_groups
-                if is_valid_salmon_run(group)
-            )
+            new_group = set.union({wpos}, *connected_groups)
 
-            joined = set.union({wpos}, *connected_groups)
-            partial_score_after = (
-                scoring_salmon_run[len(joined)] if is_valid_salmon_run(joined) else 0
-            )
+            if is_valid_salmon_run(new_group):
+                partial_score_before = sum(
+                    scoring_salmon_run[len(group)] for group in connected_groups
+                )
 
-            reward = partial_score_after - partial_score_before
+                partial_score_after = scoring_salmon_run[len(new_group)]
+
+                reward = partial_score_after - partial_score_before
+
+            else:
+                reward = -1000
 
         case Wildlife.HAWK:
             groups = state.env.wildlife_groups(Wildlife.HAWK)
-            num_singles_before = sum(len(g) == 1 for g in groups)
-
             connected_groups = find_connected_groups(groups, wpos)
 
             if len(connected_groups) == 0:
-                num_singles_after = num_singles_before + 1
-            else:
-                num_singles_after = num_singles_before - sum(
-                    len(g) == 1 for g in connected_groups
+                num_singles_before = sum(len(g) == 1 for g in groups)
+
+                reward = (
+                    scoring_hawk_singles[num_singles_before + 1]
+                    - scoring_hawk_singles[num_singles_before]
                 )
 
-            reward = (
-                scoring_hawk_singles[num_singles_after]
-                - scoring_hawk_singles[num_singles_before]
-            )
+            else:
+                reward = -1000
 
         case Wildlife.FOX:
             reward = len(set(w for _, w in state.env.adjacent_wildlife(wpos)))
