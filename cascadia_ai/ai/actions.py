@@ -111,7 +111,7 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
                 )
 
             else:
-                reward = -1000
+                return -1000
 
         case Wildlife.ELK:
             groups = state.env.wildlife_groups(Wildlife.ELK)
@@ -133,32 +133,30 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
 
             new_group = set.union({wpos}, *connected_groups)
 
-            if is_valid_salmon_run(new_group):
-                partial_score_before = sum(
-                    scoring_salmon_run[len(group)] for group in connected_groups
-                )
+            if not is_valid_salmon_run(new_group):
+                return -1000
 
-                partial_score_after = scoring_salmon_run[len(new_group)]
+            partial_score_before = sum(
+                scoring_salmon_run[len(group)] for group in connected_groups
+            )
 
-                reward = partial_score_after - partial_score_before
+            partial_score_after = scoring_salmon_run[len(new_group)]
 
-            else:
-                reward = -1000
+            reward = partial_score_after - partial_score_before
 
         case Wildlife.HAWK:
             groups = state.env.wildlife_groups(Wildlife.HAWK)
             connected_groups = find_connected_groups(groups, wpos)
 
-            if len(connected_groups) == 0:
-                num_singles_before = sum(len(g) == 1 for g in groups)
+            if len(connected_groups):
+                return -1000
 
-                reward = (
-                    scoring_hawk_singles[num_singles_before + 1]
-                    - scoring_hawk_singles[num_singles_before]
-                )
+            num_singles_before = sum(len(g) == 1 for g in groups)
 
-            else:
-                reward = -1000
+            reward = (
+                scoring_hawk_singles[num_singles_before + 1]
+                - scoring_hawk_singles[num_singles_before]
+            )
 
         case Wildlife.FOX:
             reward = len(set(w for _, w in state.env.adjacent_wildlife(wpos)))
