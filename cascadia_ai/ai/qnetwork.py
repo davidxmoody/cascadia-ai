@@ -146,7 +146,7 @@ class DQNLightning(L.LightningModule):
         x, y = batch
         y_pred = self(x)
         loss = self.loss_fn(y_pred, y.reshape((-1, 1)))
-        self.log("val_loss", loss, prog_bar=False)
+        self.log("val_loss", loss)
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=0.001)
@@ -211,23 +211,6 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
     return state
 
 
-# %%
-model_played_games = []
-for state in tqdm(realistic_states[:1000], desc="Model playing games"):
-    played_state = play_test_game(model, state.copy())
-    model_played_games.append((state, played_state))
-
-
-with open("data/model_played_games.pkl", "wb") as f:
-    pickle.dump(model_played_games, f)
-
-
-# %%
-with open("data/model_played_games.pkl", "rb") as f:
-    model_played_games = pickle.load(f)
-
-
-# %%
 results = []
 for _ in tqdm(range(100), desc="Playing test games"):
     score = calculate_score(play_test_game(model, GameState()))
@@ -241,7 +224,7 @@ for _ in tqdm(range(100), desc="Playing test games"):
     )
 
 df = pd.DataFrame(results)
-print(df.mean().T)
+print(df.describe().T[["mean", "min", "max"]])
 
 
 # %%

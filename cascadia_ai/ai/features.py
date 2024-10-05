@@ -7,18 +7,12 @@ from cascadia_ai.game_state import Action, GameState
 feature_names = [
     "turns_remaining",
     "nature_tokens",
-    "num_unoccupied",
     "unclaimed_nt_rewards",
     *(
         f"{h.value}_{suffix}"
         for h in Habitat
         for suffix in [
-            "group_size_0",
-            "group_size_1",
-            "group_size_2",
-            "scoring_bonus",
-            "in_display_0",
-            "in_display_1",
+            "largest_area",
             "num_in_remaining",
         ]
     ),
@@ -35,12 +29,7 @@ feature_names = [
             "group_size_6",
             "group_size_7",
             "num_unoccupied_slots",
-            "in_display_0",
-            "in_display_1",
-            "slots_in_display_0",
-            "slots_in_display_1",
             "num_in_remaining",
-            "num_slots_in_remaining",
         ]
     ),
 ]
@@ -70,27 +59,12 @@ class StateFeatures:
 
         self["turns_remaining"] = state.turns_remaining
         self["nature_tokens"] = state.nature_tokens
-        self["num_unoccupied"] = len(self._unoccupied)
         self["unclaimed_nt_rewards"] = sum(
             t.nature_token_reward for _, t in self._unoccupied
         )
 
         for h in Habitat:
-            group_sizes = [len(g) for g in self._hgroups[h]]
-
-            for i in range(3):
-                self[f"{h.value}_group_size_{i}"] = (
-                    group_sizes[i] if i < len(group_sizes) else 0
-                )
-
-            self[f"{h.value}_scoring_bonus"] = (
-                2 if len(group_sizes) and group_sizes[0] >= 7 else 0
-            )
-
-            for i in range(2):
-                self[f"{h.value}_in_display_{i}"] = sum(
-                    h == h2 for h2 in state.tile_display[i].habitats
-                )
+            self[f"{h.value}_largest_area"] = len(self._hgroups[h][0])
 
             self[f"{h.value}_num_in_remaining"] = sum(
                 h == h2
@@ -108,19 +82,8 @@ class StateFeatures:
                 w in t.wildlife_slots for _, t in self._unoccupied
             )
 
-            for i in range(2):
-                self[f"{w.value}_in_display_{i}"] = w == state.wildlife_display[i]
-                self[f"{w.value}_slots_in_display_{i}"] = (
-                    w in state.tile_display[i].wildlife_slots
-                )
-
             self[f"{w.value}_num_in_remaining"] = state._wildlife_supply[w] + sum(
                 w == w2 for w2 in state.wildlife_display[2:]
-            )
-
-            self[f"{w.value}_num_slots_in_remaining"] = sum(
-                w in tile.wildlife_slots
-                for tile in (state._tile_supply + state.tile_display[2:])
             )
 
     def get_next_features(self, actions: list[Action]):
@@ -149,9 +112,6 @@ class StateFeatures:
                 features_array[i, F["nature_tokens"]] += 1
                 features_array[i, F["unclaimed_nt_rewards"]] -= 1
 
-            if wildlife_target is None:
-                features_array[i, F["num_unoccupied"]] += 1
-
             hkey = (action.tile_index, action.tile_position, action.tile_rotation)
             if hkey in hcache:
                 hvalues = hcache[hkey]
@@ -172,22 +132,13 @@ class StateFeatures:
                         )
                     }
 
-                    group_sizes = [1]
+                    new_group_size = 1
                     for group in self._hgroups[h]:
-                        if group.isdisjoint(connected_positions):
-                            group_sizes.append(len(group))
-                        else:
-                            group_sizes[0] += len(group)
-                    group_sizes.sort(reverse=True)
+                        if not group.isdisjoint(connected_positions):
+                            new_group_size += len(group)
 
-                    for j in range(3):
-                        hvalues[F[f"{h.value}_group_size_{j}"]] = (
-                            group_sizes[j] if j < len(group_sizes) else 0
-                        )
-
-                    hvalues[F[f"{h.value}_scoring_bonus"]] = (
-                        2 if len(group_sizes) and group_sizes[0] >= 7 else 0
-                    )
+                    if new_group_size > len(self._hgroups[h][0]):
+                        hvalues[F[f"{h.value}_largest_area"]] = new_group_size
 
                 hcache[hkey] = hvalues
 
@@ -197,33 +148,9 @@ class StateFeatures:
             for tile in self._state.tile_display[2:]:
                 for h in tile.habitats:
                     features_array[i, F[f"{h.value}_num_in_remaining"]] -= 1
-                for w in tile.wildlife_slots:
-                    features_array[i, F[f"{w.value}_num_slots_in_remaining"]] -= 1
-
-            new_tile_display = self._state.tile_display[:]
-            new_tile_display.pop(action.tile_index),
-            new_tile_display.pop(0),
-            for j, tile in enumerate(new_tile_display):
-                for h in Habitat:
-                    features_array[i, F[f"{h.value}_in_display_{j}"]] = sum(
-                        h == h2 for h2 in new_tile_display[j].habitats
-                    )
-                for w in Wildlife:
-                    features_array[i, F[f"{w.value}_slots_in_display_{j}"]] = (
-                        w in tile.wildlife_slots
-                    )
 
             for w in self._state.wildlife_display[2:]:
                 features_array[i, F[f"{w.value}_num_in_remaining"]] -= 1
-
-            new_wildlife_display = self._state.wildlife_display[:]
-            new_wildlife_display.pop(action.wildlife_index)
-            new_wildlife_display.pop(0)
-            for j in range(2):
-                for w in Wildlife:
-                    features_array[i, F[f"{w.value}_in_display_{j}"]] = (
-                        w == new_wildlife_display[j]
-                    )
 
             if action.tile_position != action.wildlife_position:
                 for w in placed_tile.wildlife_slots:
