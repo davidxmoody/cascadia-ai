@@ -9,22 +9,8 @@ feature_names = [
     "turns_remaining",
     "nature_tokens",
     "unclaimed_nt_rewards",
-    *(
-        f"{h.value}_{suffix}"
-        for h in Habitat
-        for suffix in [
-            "largest_area",
-            "remaining_fraction",
-        ]
-    ),
-    *(
-        f"{w.value}_{suffix}"
-        for w in Wildlife
-        for suffix in [
-            "num_unoccupied_slots",
-            "remaining_fraction",
-        ]
-    ),
+    *(f"{w.value}_num_unoccupied_slots" for w in Wildlife),
+    *(f"{h.value}_largest_area" for h in Habitat),
     "num_bear_pairs",
     "num_bear_singles",
     "num_elk",
@@ -35,71 +21,36 @@ feature_names = [
 
 F = {name: i for i, name in enumerate(feature_names)}
 
-# TODO add something to indicate if a single bear can no longer be reached
-# (i.e. if it's surrounded by other things)
-
-# TODO add something to indicate fox score potential
-# (e.g. for each fox, how much could its score be increased)
-
-# TODO consider encoding group sizes differently for salmon/elk vs bears/hawks
-# maybe encode number of groups of each size vs ordered group sizes
-
-# TODO include something about adjacency of empty slots with other things
-
 
 class StateFeatures:
     def __init__(self, state: GameState):
+        data = np.zeros(len(feature_names), dtype=np.float32)
+
+        data[F["turns_remaining"]] = state.turns_remaining
+        data[F["nature_tokens"]] = state.nature_tokens
+
+        for _, t in state.env.unoccupied_tiles():
+            data[F["unclaimed_nt_rewards"]] += t.nature_token_reward
+            for w in t.wildlife_slots:
+                data[F[f"{w.value}_num_unoccupied_slots"]] = 1
+
+        hgroups = state.env.habitat_groups()
+        for h, groups in hgroups.items():
+            data[F[f"{h.value}_largest_area"]] = len(groups[0])
+
+        bsizes = Counter(len(g) for g in state.env.wildlife_groups(Wildlife.BEAR))
+        data[F["num_bear_pairs"]] = bsizes[2]
+        data[F["num_bear_singles"]] = bsizes[1]
+
+        wcounts = Counter(state.env.wildlife.values())
+        data[F["num_elk"]] = wcounts[Wildlife.ELK]
+        data[F["num_salmon"]] = wcounts[Wildlife.SALMON]
+        data[F["num_hawks"]] = wcounts[Wildlife.HAWK]
+        data[F["num_foxes"]] = wcounts[Wildlife.FOX]
+
+        self._data = data
         self._state = state
-        self._data = np.zeros(len(feature_names), dtype=np.float32)
-
-        self._hgroups = state.env.habitat_groups()
-        self._wgroups = {w: state.env.wildlife_groups(w) for w in Wildlife}
-        self._unoccupied = list(state.env.unoccupied_tiles())
-
-        self._wcounts = Counter(state.env.wildlife.values())
-
-        self._remaining_wcounts = Counter(state._wildlife_supply)
-        self._remaining_wcounts.update(state.wildlife_display)
-
-        self._remaining_hcounts = Counter(
-            h for t in (state._tile_supply + state.tile_display) for h in t.habitats
-        )
-
-        self["turns_remaining"] = state.turns_remaining
-        self["nature_tokens"] = state.nature_tokens
-        self["unclaimed_nt_rewards"] = sum(
-            t.nature_token_reward for _, t in self._unoccupied
-        )
-
-        for h in Habitat:
-            self[f"{h.value}_largest_area"] = len(self._hgroups[h][0])
-
-            self[f"{h.value}_remaining_fraction"] = (
-                self._remaining_hcounts[h] / self._remaining_hcounts.total()
-            )
-
-        for w in Wildlife:
-            # group_sizes = [len(g) for g in self._wgroups[w]]
-
-            # for i in range(1, 8):
-            #     self[f"{w.value}_group_size_{i}"] = sum(gs == i for gs in group_sizes)
-
-            self[f"{w.value}_num_unoccupied_slots"] = sum(
-                w in t.wildlife_slots for _, t in self._unoccupied
-            )
-
-            self[f"{w.value}_remaining_fraction"] = (
-                self._remaining_wcounts[w] / self._remaining_wcounts.total()
-            )
-
-        bear_group_sizes = [len(g) for g in self._wgroups[Wildlife.BEAR]]
-        self["num_bear_pairs"] = sum(gs == 2 for gs in bear_group_sizes)
-        self["num_bear_singles"] = sum(gs == 1 for gs in bear_group_sizes)
-
-        self["num_elk"] = self._wcounts[Wildlife.ELK]
-        self["num_salmon"] = self._wcounts[Wildlife.SALMON]
-        self["num_hawks"] = self._wcounts[Wildlife.HAWK]
-        self["num_foxes"] = self._wcounts[Wildlife.FOX]
+        self._hgroups = hgroups
 
     def get_next_features(self, actions: list[Action]):
         hcache: dict[tuple[int, HexPosition, int], dict[int, int]] = {}
@@ -160,23 +111,6 @@ class StateFeatures:
             for k, v in hvalues.items():
                 features_array[i, k] = v
 
-            remaining_hcounts = self._remaining_hcounts.copy()
-            for ti in [action.tile_index, 1 if action.tile_index == 0 else 0]:
-                for h in self._state.tile_display[ti].habitats:
-                    remaining_hcounts[h] -= 1
-            for h in Habitat:
-                features_array[i, F[f"{h.value}_remaining_fraction"]] = (
-                    remaining_hcounts[h] / remaining_hcounts.total()
-                )
-
-            remaining_wcounts = self._remaining_wcounts.copy()
-            for wi in [action.wildlife_index, 1 if action.wildlife_index == 0 else 0]:
-                remaining_wcounts[self._state.wildlife_display[wi]] -= 1
-            for w in Wildlife:
-                features_array[i, F[f"{w.value}_remaining_fraction"]] = (
-                    remaining_wcounts[w] / remaining_wcounts.total()
-                )
-
             if action.tile_position != action.wildlife_position:
                 for w in placed_tile.wildlife_slots:
                     features_array[i, F[f"{w.value}_num_unoccupied_slots"]] += 1
@@ -212,21 +146,11 @@ class StateFeatures:
 
         return features_array
 
-    def __getitem__(self, feature: str) -> float:
-        if feature not in feature_names:
-            raise KeyError(f"Feature '{feature}' not found")
-        return self._data[feature_names.index(feature)]
-
-    def __setitem__(self, feature: str, value: float | int | bool) -> None:
-        if feature not in feature_names:
-            raise KeyError(f"Feature '{feature}' not found")
-        self._data[feature_names.index(feature)] = value
-
     def __repr__(self):
         return "\n".join(
             [
                 "StateFeatures({",
-                *(f"  '{fn}': {self[fn]}," for fn in feature_names),
+                *(f"  '{fn}': {self._data[F[fn]]}," for fn in feature_names),
                 "})",
             ]
         )
