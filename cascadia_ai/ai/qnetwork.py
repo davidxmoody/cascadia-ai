@@ -111,6 +111,7 @@ features = torch.from_numpy(
     )
 )
 
+# TODO consider caching labels or else saving them with the states
 labels = torch.tensor(
     [
         float(calculate_score(s2).total - calculate_score(s1).total)
@@ -121,12 +122,12 @@ labels = torch.tensor(
 
 # %%
 class DQNLightning(L.LightningModule):
-    def __init__(self, input_dim: int):
+    def __init__(self, input_dim: int, hidden_dim: int):
         super().__init__()
 
-        self.fc1 = nn.Linear(input_dim, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 1)
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, 1)
 
         self.loss_fn = nn.MSELoss()
 
@@ -181,7 +182,7 @@ logger = TensorBoardLogger("tb_logs", name="qnetwork")
 
 trainer = L.Trainer(max_epochs=100, logger=logger)
 
-model = DQNLightning(num_features)
+model = DQNLightning(num_features, 8)
 
 trainer.fit(model, train_loader, val_loader)
 
