@@ -205,10 +205,6 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
             )
             with torch.no_grad():
                 q_values = model(next_features).squeeze()
-                # expected_mean_rewards = model(next_features).squeeze()
-            # expected_rewards = expected_mean_rewards * (
-                # gamma * (state.turns_remaining - 1)
-            # ) + torch.tensor(rewards)
             expected_rewards = q_values * gamma + torch.tensor(rewards)
             i = expected_rewards.argmax().item()
 
@@ -234,17 +230,8 @@ with open("data/model_played_games.pkl", "rb") as f:
 
 
 # %%
-def float_range(start, stop, step, repeat=1):
-    while start <= stop:
-        for _ in range(repeat):
-            yield int(start * 100) / 100
-        start += step
-
-
-# %%
 results = []
-# for gamma in tqdm(float_range(0.7, 1.2, 0.02, 50), desc="Playing test games"):
-for _ in tqdm(range(100), desc="Playing test games"):
+for _ in tqdm(range(50), desc="Playing test games"):
     score = calculate_score(play_test_game(model, GameState()))
     results.append(
         {
@@ -256,9 +243,7 @@ for _ in tqdm(range(100), desc="Playing test games"):
     )
 
 df = pd.DataFrame(results)
-df.mean().T
-# df.describe().T
-# px.bar(df.groupby("gamma").mean().reset_index(), x="gamma", y="total").show()
+print(df.mean().T)
 
 
 # %%
@@ -275,9 +260,6 @@ class SklearnWrapper:
 
 
 wrapper_model = SklearnWrapper(model)
-
-# X = pd.DataFrame(features)
-# X.columns = feature_names
 
 results = permutation_importance(
     wrapper_model, features, labels, n_repeats=30, scoring="neg_mean_squared_error"

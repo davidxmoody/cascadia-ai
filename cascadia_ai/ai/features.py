@@ -101,10 +101,8 @@ class StateFeatures:
         for w in Wildlife:
             group_sizes = [len(g) for g in self._wgroups[w]]
 
-            for i in range(8):
-                self[f"{w.value}_group_size_{i}"] = (
-                    group_sizes[i] if i < len(group_sizes) else 0
-                )
+            for i in range(1, 8):
+                self[f"{w.value}_group_size_{i}"] = sum(gs == i for gs in group_sizes)
 
             self[f"{w.value}_num_unoccupied_slots"] = sum(
                 w in t.wildlife_slots for _, t in self._unoccupied
@@ -253,9 +251,9 @@ class StateFeatures:
                         group_sizes[0] += len(group)
                 group_sizes.sort(reverse=True)
 
-                for j in range(8):
+                for j in range(1, 8):
                     features_array[i, F[f"{placed_wildlife.value}_group_size_{j}"]] = (
-                        group_sizes[j] if j < len(group_sizes) else 0
+                        sum(gs == j for gs in group_sizes)
                     )
 
         return features_array
