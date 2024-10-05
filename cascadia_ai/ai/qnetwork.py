@@ -57,21 +57,19 @@ def play_game_greedy_epsilon_biased(epsilon: float, until_turns_remaining: int =
     return state
 
 
-# %%
-def generate_realistic_states(epsilon: float, num: int):
-    for i in tqdm(range(num), desc=f"Generating realistic states (epsilon {epsilon})"):
-        yield play_game_greedy_epsilon_biased(epsilon, i % 19 + 1)
+load_realistic_states = True
 
+if load_realistic_states:
+    with open("data/realistic_states.pkl", "rb") as f:
+        realistic_states = pickle.load(f)
 
-realistic_states = list(generate_realistic_states(0.1, 100000))
-
-# with open("data/realistic_states.pkl", "wb") as f:
-#     pickle.dump(realistic_states, f)
-
-
-# %%
-with open("data/realistic_states.pkl", "rb") as f:
-    realistic_states = pickle.load(f)
+else:
+    realistic_states = [
+        play_game_greedy_epsilon_biased(0.1, i % 19 + 1)
+        for i in tqdm(range(100000), desc=f"Generating realistic states")
+    ]
+    with open("data/realistic_states.pkl", "wb") as f:
+        pickle.dump(realistic_states, f)
 
 
 # %%
@@ -88,19 +86,19 @@ def play_game_greedy(state: GameState):
     return state
 
 
-greedy_played_games = [
-    (state, play_game_greedy(state.copy()))
-    for state in tqdm(realistic_states, desc="Greedy playing games")
-]
+load_greedy_played_games = True
 
+if load_greedy_played_games:
+    with open("data/greedy_played_games.pkl", "rb") as f:
+        greedy_played_games = pickle.load(f)
 
-# with open("data/greedy_played_games.pkl", "wb") as f:
-#     pickle.dump(greedy_played_games, f)
-
-
-# %%
-with open("data/greedy_played_games.pkl", "rb") as f:
-    greedy_played_games = pickle.load(f)
+else:
+    greedy_played_games = [
+        (state, play_game_greedy(state.copy()))
+        for state in tqdm(realistic_states, desc="Greedy playing games")
+    ]
+    with open("data/greedy_played_games.pkl", "wb") as f:
+        pickle.dump(greedy_played_games, f)
 
 
 # %%
@@ -148,7 +146,7 @@ class DQNLightning(L.LightningModule):
         x, y = batch
         y_pred = self(x)
         loss = self.loss_fn(y_pred, y.reshape((-1, 1)))
-        self.log("val_loss", loss)
+        self.log("val_loss", loss, prog_bar=False)
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=0.001)
@@ -231,7 +229,7 @@ with open("data/model_played_games.pkl", "rb") as f:
 
 # %%
 results = []
-for _ in tqdm(range(50), desc="Playing test games"):
+for _ in tqdm(range(100), desc="Playing test games"):
     score = calculate_score(play_test_game(model, GameState()))
     results.append(
         {
