@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 from sklearn.inspection import permutation_importance
+from statistics import mean
 
 
 # %%
@@ -64,10 +65,9 @@ if load_realistic_states:
         realistic_states = pickle.load(f)
 
 else:
-    realistic_states = [
-        play_game_greedy_epsilon_biased(0.1, i % 19 + 1)
-        for i in tqdm(range(100000), desc=f"Generating realistic states")
-    ]
+    realistic_states = []
+    for i in tqdm(range(100000), desc=f"Generating realistic states"):
+        realistic_states.append(play_game_greedy_epsilon_biased(0.1, i % 19 + 1))
     with open("data/realistic_states.pkl", "wb") as f:
         pickle.dump(realistic_states, f)
 
@@ -93,10 +93,10 @@ if load_greedy_played_games:
         greedy_played_games = pickle.load(f)
 
 else:
-    greedy_played_games = [
-        (state, play_game_greedy(state.copy()))
-        for state in tqdm(realistic_states, desc="Greedy playing games")
-    ]
+    greedy_played_games = []
+    for state in tqdm(realistic_states, desc="Greedy playing games"):
+        scores = [calculate_score(play_game_greedy(state.copy())) for _ in range(5)]
+        greedy_played_games.append((state, scores))
     with open("data/greedy_played_games.pkl", "wb") as f:
         pickle.dump(greedy_played_games, f)
 
@@ -105,17 +105,16 @@ else:
 features = torch.from_numpy(
     np.vstack(
         [
-            StateFeatures(s1)._data
-            for s1, _ in tqdm(greedy_played_games, desc="Getting features")
+            StateFeatures(state)._data
+            for state, _ in tqdm(greedy_played_games, desc="Calculating features")
         ]
     )
 )
 
-# TODO consider caching labels or else saving them with the states
 labels = torch.tensor(
     [
-        float(calculate_score(s2).total - calculate_score(s1).total)
-        for s1, s2 in tqdm(greedy_played_games, desc="Calculating labels")
+        mean(score.total for score in scores)
+        for _, scores in tqdm(greedy_played_games, desc="Calculating labels")
     ]
 )
 
