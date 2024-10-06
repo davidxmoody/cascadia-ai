@@ -32,7 +32,7 @@ class StateFeatures:
         for _, t in state.env.unoccupied_tiles():
             data[F["unclaimed_nt_rewards"]] += t.nature_token_reward
             for w in t.wildlife_slots:
-                data[F[f"{w.value}_num_unoccupied_slots"]] = 1
+                data[F[f"{w.value}_num_unoccupied_slots"]] += 1
 
         hgroups = state.env.habitat_groups()
         for h, groups in hgroups.items():
