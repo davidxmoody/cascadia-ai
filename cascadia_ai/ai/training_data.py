@@ -1,7 +1,7 @@
 import pickle
 from random import choice, random
 from tqdm import tqdm
-from cascadia_ai.ai.actions import get_actions
+from cascadia_ai.ai.actions import get_actions_and_rewards
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.game_state import Action, GameState
 from cascadia_ai.score import Score, calculate_score
@@ -23,26 +23,25 @@ def adjust_reward(state: GameState, action: Action, reward: int):
 
 def play_game_greedy_epsilon_biased(epsilon: float, until_turns_remaining: int = 0):
     state = GameState()
+
     while state.turns_remaining > until_turns_remaining:
-        actions_and_rewards = list(get_actions(state))
+        actions, rewards = get_actions_and_rewards(state)
 
         if random() < epsilon:
-            random_action = choice(actions_and_rewards)[0]
-            state.take_action(random_action)
+            state.take_action(choice(actions))
 
         else:
-            actions_and_rewards = [
-                (a, adjust_reward(state, a, r)) for a, r in actions_and_rewards
-            ]
+            rewards = [adjust_reward(state, a, r) for a, r in zip(actions, rewards)]
 
-            max_reward = max(r for _, r in actions_and_rewards)
-            max_actions = [a for a, r in actions_and_rewards if r == max_reward]
+            max_reward = max(rewards)
+            max_actions = [a for a, r in zip(actions, rewards) if r == max_reward]
             max_actions_no_nt = [a for a in max_actions if not a.nt_spent]
 
             action = choice(
                 max_actions_no_nt if len(max_actions_no_nt) else max_actions
             )
             state.take_action(action)
+
     return state
 
 
@@ -64,14 +63,15 @@ def get_realistic_states(load=True) -> list[GameState]:
 # %%
 def play_game_greedy(state: GameState):
     while state.turns_remaining > 0:
-        actions_and_rewards = list(get_actions(state))
+        actions, rewards = get_actions_and_rewards(state)
 
-        max_reward = max(r for _, r in actions_and_rewards)
-        max_actions = [a for a, r in actions_and_rewards if r == max_reward]
+        max_reward = max(rewards)
+        max_actions = [a for a, r in zip(actions, rewards) if r == max_reward]
         max_actions_no_nt = [a for a in max_actions if not a.nt_spent]
 
         action = choice(max_actions_no_nt if len(max_actions_no_nt) else max_actions)
         state.take_action(action)
+
     return state
 
 

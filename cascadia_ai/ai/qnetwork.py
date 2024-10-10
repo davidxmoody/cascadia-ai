@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import lightning as L
 from tqdm import tqdm
-from cascadia_ai.ai.actions import get_actions
+from cascadia_ai.ai.actions import get_actions_and_rewards
 from cascadia_ai.ai.features import StateFeatures, feature_names
 from cascadia_ai.ai.training_data import get_greedy_played_games
 from cascadia_ai.game_state import GameState
@@ -111,8 +111,7 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
     state = GameState()
 
     while state.turns_remaining > 0:
-        # TODO consider refactoring get_actions to return separate lists
-        actions, rewards = zip(*get_actions(state))
+        actions, rewards = get_actions_and_rewards(state)
 
         if state.turns_remaining == 1:
             i = rewards.index(max(rewards))

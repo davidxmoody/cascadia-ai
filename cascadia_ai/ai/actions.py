@@ -169,7 +169,10 @@ def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
     return reward + adjacent_fox_reward
 
 
-def get_actions(state: GameState):
+def get_actions_and_rewards(state: GameState) -> tuple[list[Action], list[int]]:
+    actions: list[Action] = []
+    rewards: list[int] = []
+
     wcache: dict[tuple[Wildlife, HexPosition], int | None] = {}
 
     for tindex, tpos, trot, treward in tile_options(state):
@@ -188,10 +191,11 @@ def get_actions(state: GameState):
 
                 if wreward is not None:
                     wplaced = True
-                    yield (
-                        Action(tindex, tpos, trot, windex, wpos),
-                        treward + ntreward + ntcost + wreward,
-                    )
+                    actions.append(Action(tindex, tpos, trot, windex, wpos))
+                    rewards.append(treward + ntreward + ntcost + wreward)
 
         if not wplaced:
-            yield (Action(tindex, tpos, trot, tindex, None), treward)
+            actions.append(Action(tindex, tpos, trot, tindex, None))
+            rewards.append(treward)
+
+    return (actions, rewards)

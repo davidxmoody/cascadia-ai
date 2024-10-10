@@ -154,29 +154,3 @@ class StateFeatures:
                 "})",
             ]
         )
-
-
-# # %%
-# s = GameState()
-
-# # %%
-# actions = [a for a, _ in get_actions(s)]
-
-# sf = StateFeatures(s)
-
-# next_states = [s.copy().take_action(a) for a in actions]
-
-# next_features = sf.get_next_features(actions)
-
-# # %%
-# for i, ns in enumerate(next_states):
-#     nsf = StateFeatures(ns)
-#     nsfd = nsf._data
-#     nsfd2 = next_features[i]
-
-#     if not np.array_equal(nsfd, nsfd2):
-#         print(i)
-#         print(actions[i])
-#         for fi, fn in enumerate(feature_names):
-#             print(f"{fn:<24}: {nsfd[fi]:>4} {nsfd2[fi]:>4} {nsfd[fi] == nsfd2[fi]}")
-#         break
