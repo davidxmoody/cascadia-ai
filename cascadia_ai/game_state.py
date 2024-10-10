@@ -68,7 +68,7 @@ class GameState:
 
     @property
     def turns_remaining(self):
-        return 23 - self.env.num_tiles_placed
+        return 23 - len(self.env.tiles)
 
     def copy(self):
         return deepcopy(self)

@@ -59,14 +59,6 @@ class Environment:
         self.tiles = dict(starting_tile_group)
         self.wildlife = {}
 
-    @property
-    def num_tiles_placed(self):
-        return len(self.tiles)
-
-    @property
-    def num_wildlife_placed(self):
-        return len(self.wildlife)
-
     def adjacent_tiles(self, pos: HexPosition):
         return (
             (apos, self.tiles[apos])
@@ -86,13 +78,6 @@ class Environment:
         for _ in self.adjacent_wildlife(pos, filter):
             return True
         return False
-
-    def adjacent_unoccupied_tiles(self, pos: HexPosition):
-        return (
-            (apos, atile)
-            for apos, atile in self.adjacent_tiles(pos)
-            if apos not in self.wildlife
-        )
 
     def adjacent_wildlife_counts(self, pos: HexPosition):
         return Counter(w for _, w in self.adjacent_wildlife(pos))
