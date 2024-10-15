@@ -10,6 +10,7 @@ from cascadia_ai.ai.features import StateFeatures, feature_names
 from cascadia_ai.ai.training_data import get_greedy_played_games
 from cascadia_ai.game_state import GameState
 from cascadia_ai.score import calculate_score
+from cascadia_ai.tui import print_state
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -101,15 +102,13 @@ logger = TensorBoardLogger("tb_logs", name="qnetwork")
 
 trainer = L.Trainer(max_epochs=100, logger=logger)
 
-model = DQNLightning(num_features, 8)
+model = DQNLightning(num_features, 20)
 
 trainer.fit(model, train_loader, val_loader)
 
 
 # %%
 def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
-    state = GameState()
-
     while state.turns_remaining > 0:
         actions, rewards = get_actions_and_rewards(state)
 
@@ -132,11 +131,15 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
 
 results = []
 for _ in tqdm(range(100), desc="Playing test games"):
-    score = calculate_score(play_test_game(model, GameState()))
+    end_state = play_test_game(model, GameState())
+    print_state(end_state)
+    score = calculate_score(end_state)
     results.append(
         {
             **{k.value: v for k, v in score.wildlife.items()},
+            "wtotal": sum(score.wildlife.values()),
             **{k.value: v for k, v in score.habitat.items()},
+            "htotal": sum(score.habitat.values()),
             "nt": score.nature_tokens,
             "total": score.total,
         }
@@ -151,7 +154,7 @@ class SklearnWrapper:
     def __init__(self, model):
         self.model = model
 
-    def fit(self, X, y):
+    def fit(self):
         pass
 
     def predict(self, X):

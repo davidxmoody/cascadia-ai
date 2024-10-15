@@ -2,14 +2,14 @@ from collections import Counter
 from copy import deepcopy
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.tiles import Tile
-from typing import Dict, Tuple
+from typing import Any, Dict, Generator, Tuple
 
 HexPosition = Tuple[int, int]
 
 hex_steps: list[HexPosition] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)]
 
 
-def adjacent_positions(pos: HexPosition):
+def adjacent_positions(pos: HexPosition) -> Generator[HexPosition, Any, None]:
     q, r = pos
     for dq, dr in hex_steps:
         yield (q + dq, r + dr)

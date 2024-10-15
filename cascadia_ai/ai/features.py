@@ -17,9 +17,40 @@ feature_names = [
     "num_salmon",
     "num_hawks",
     "num_foxes",
+    # "usable_spaces",
 ]
 
 F = {name: i for i, name in enumerate(feature_names)}
+
+
+# def calculate_usable_spaces(
+#     state: GameState, last_placement: tuple[HexPosition, Wildlife] | None = None
+# ):
+#     num_usable = 0
+
+#     for pos, tile in state.env.unoccupied_tiles():
+#         if Wildlife.ELK in tile.wildlife_slots or Wildlife.FOX in tile.wildlife_slots:
+#             num_usable += 1
+
+#         elif (
+#             Wildlife.HAWK in tile.wildlife_slots
+#             and not state.env.has_adjacent_wildlife(pos, Wildlife.HAWK)
+#         ):
+#             num_usable += 1
+
+#         elif Wildlife.SALMON in tile.wildlife_slots and all(
+#             len(list(state.env.adjacent_wildlife(apos, Wildlife.SALMON))) < 2
+#             for apos, _ in state.env.adjacent_wildlife(pos, Wildlife.SALMON)
+#         ):
+#             num_usable += 1
+
+#         elif Wildlife.BEAR in tile.wildlife_slots and all(
+#             len(list(state.env.adjacent_wildlife(apos, Wildlife.BEAR))) == 0
+#             for apos, _ in state.env.adjacent_wildlife(pos, Wildlife.BEAR)
+#         ):
+#             num_usable += 1
+
+#     return num_usable
 
 
 class StateFeatures:
@@ -47,6 +78,8 @@ class StateFeatures:
         data[F["num_salmon"]] = wcounts[Wildlife.SALMON]
         data[F["num_hawks"]] = wcounts[Wildlife.HAWK]
         data[F["num_foxes"]] = wcounts[Wildlife.FOX]
+
+        # data[F["usable_spaces"]] = calculate_usable_spaces(state)
 
         self._data = data
         self._state = state
