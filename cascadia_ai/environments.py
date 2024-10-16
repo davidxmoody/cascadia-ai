@@ -121,8 +121,13 @@ class Environment:
             for h, groups_dict in connections.items()
         }
 
-    def wildlife_groups(self, wildlife: Wildlife):
+    def wildlife_groups(
+        self, wildlife: Wildlife, extra_position: HexPosition | None = None
+    ):
         positions = {p for p, w in self.wildlife.items() if w == wildlife}
+
+        if extra_position is not None:
+            positions.add(extra_position)
 
         visited = set[HexPosition]()
         groups = list[set[HexPosition]]()

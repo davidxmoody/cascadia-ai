@@ -1,8 +1,10 @@
 from collections import Counter
 import numpy as np
+from cascadia_ai.ai.actions import calculate_treward, calculate_wreward
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import HexPosition, share_edge
 from cascadia_ai.game_state import Action, GameState
+from cascadia_ai.tiles import Tile
 
 
 feature_names = [
@@ -17,40 +19,43 @@ feature_names = [
     "num_salmon",
     "num_hawks",
     "num_foxes",
-    # "usable_spaces",
+    "usable_spaces",
+    *(f"{w.value}_best_unoccupied_reward" for w in Wildlife),
+    *(f"{w.value}_best_adjacent_reward" for w in Wildlife),
+    *(f"{h.value}_best_reward" for h in Habitat),
 ]
 
 F = {name: i for i, name in enumerate(feature_names)}
 
 
-# def calculate_usable_spaces(
-#     state: GameState, last_placement: tuple[HexPosition, Wildlife] | None = None
-# ):
-#     num_usable = 0
+def calculate_usable_spaces(
+    state: GameState, last_placement: tuple[HexPosition, Wildlife] | None = None
+):
+    num_usable = 0
 
-#     for pos, tile in state.env.unoccupied_tiles():
-#         if Wildlife.ELK in tile.wildlife_slots or Wildlife.FOX in tile.wildlife_slots:
-#             num_usable += 1
+    for pos, tile in state.env.unoccupied_tiles():
+        if Wildlife.ELK in tile.wildlife_slots or Wildlife.FOX in tile.wildlife_slots:
+            num_usable += 1
 
-#         elif (
-#             Wildlife.HAWK in tile.wildlife_slots
-#             and not state.env.has_adjacent_wildlife(pos, Wildlife.HAWK)
-#         ):
-#             num_usable += 1
+        elif (
+            Wildlife.HAWK in tile.wildlife_slots
+            and not state.env.has_adjacent_wildlife(pos, Wildlife.HAWK)
+        ):
+            num_usable += 1
 
-#         elif Wildlife.SALMON in tile.wildlife_slots and all(
-#             len(list(state.env.adjacent_wildlife(apos, Wildlife.SALMON))) < 2
-#             for apos, _ in state.env.adjacent_wildlife(pos, Wildlife.SALMON)
-#         ):
-#             num_usable += 1
+        elif Wildlife.SALMON in tile.wildlife_slots and all(
+            len(list(state.env.adjacent_wildlife(apos, Wildlife.SALMON))) < 2
+            for apos, _ in state.env.adjacent_wildlife(pos, Wildlife.SALMON)
+        ):
+            num_usable += 1
 
-#         elif Wildlife.BEAR in tile.wildlife_slots and all(
-#             len(list(state.env.adjacent_wildlife(apos, Wildlife.BEAR))) == 0
-#             for apos, _ in state.env.adjacent_wildlife(pos, Wildlife.BEAR)
-#         ):
-#             num_usable += 1
+        elif Wildlife.BEAR in tile.wildlife_slots and all(
+            len(list(state.env.adjacent_wildlife(apos, Wildlife.BEAR))) == 0
+            for apos, _ in state.env.adjacent_wildlife(pos, Wildlife.BEAR)
+        ):
+            num_usable += 1
 
-#     return num_usable
+    return num_usable
 
 
 class StateFeatures:
@@ -79,7 +84,47 @@ class StateFeatures:
         data[F["num_hawks"]] = wcounts[Wildlife.HAWK]
         data[F["num_foxes"]] = wcounts[Wildlife.FOX]
 
-        # data[F["usable_spaces"]] = calculate_usable_spaces(state)
+        data[F["usable_spaces"]] = calculate_usable_spaces(state)
+
+        # best_wrewards = []
+        # for pos, tile in state.env.unoccupied_tiles():
+        #     best_wreward = 0
+        #     for wildlife in tile.wildlife_slots:
+        #         wreward = calculate_wreward(state, wildlife, pos)
+        #         if wreward is not None:
+        #             if tile.nature_token_reward:
+        #                 wreward += 1
+        #             best_wreward = max(best_wreward, wreward)
+        #     best_wrewards.append(best_wreward)
+
+        # best_wrewards.sort(reverse=True)
+
+        # for i in range(3):
+        #     data[F[f"best_unoccupied_wreward_{i}"]] = best_wrewards[i]
+
+        surrounding_empty = {pos for pos in state.env.all_adjacent_empty()}
+
+        for w in Wildlife:
+            data[F[f"{w.value}_best_unoccupied_reward"]] = max(
+                (
+                    (calculate_wreward(state, w, pos) or -1)
+                    + int(tile.nature_token_reward)
+                    for pos, tile in state.env.unoccupied_tiles()
+                    if w in tile.wildlife_slots
+                ),
+                default=0,
+            )
+
+        for w in Wildlife:
+            data[F[f"{w.value}_best_adjacent_reward"]] = max(
+                (calculate_wreward(state, w, pos) or 0) for pos in surrounding_empty
+            )
+
+        for h in Habitat:
+            data[F[f"{h.value}_best_reward"]] = max(
+                calculate_treward(state, hgroups, Tile((h, h), frozenset()), pos, 0)
+                for pos in surrounding_empty
+            )
 
         self._data = data
         self._state = state
