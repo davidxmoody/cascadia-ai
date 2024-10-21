@@ -1,5 +1,10 @@
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import HexPosition, adjacent_positions, share_edge
+from cascadia_ai.environments import (
+    Environment,
+    HexPosition,
+    adjacent_positions,
+    share_edge,
+)
 from cascadia_ai.game_state import Action, GameState
 from cascadia_ai.tiles import Tile
 from cascadia_ai.score import (
@@ -93,80 +98,106 @@ def wpos_options(state: GameState, tindex: int, tpos: HexPosition, windex: int):
             yield (pos, int(tile.nature_token_reward))
 
 
-def calculate_wreward(state: GameState, wildlife: Wildlife, wpos: HexPosition):
+def calculate_bear_reward(groups: list[set[HexPosition]], pos: HexPosition):
+    connected_groups = find_connected_groups(groups, pos)
+
+    if len(connected_groups) == 0:
+        return 0
+
+    elif len(connected_groups) == 1 and len(connected_groups[0]) == 1:
+        num_bear_pairs_before = sum(len(g) == 2 for g in groups)
+
+        return (
+            scoring_bear_pairs[num_bear_pairs_before + 1]
+            - scoring_bear_pairs[num_bear_pairs_before]
+        )
+
+    return None
+
+
+def calculate_elk_reward(groups: list[set[HexPosition]], pos: HexPosition):
+    connected_groups = find_connected_groups(groups, pos)
+
+    partial_score_before = sum(
+        get_max_elk_group_score(group) for group in connected_groups
+    )
+
+    partial_score_after = get_max_elk_group_score(set.union({pos}, *connected_groups))
+
+    return partial_score_after - partial_score_before
+
+
+def calculate_salmon_reward(groups: list[set[HexPosition]], pos: HexPosition):
+    connected_groups = find_connected_groups(groups, pos)
+
+    new_group = set.union({pos}, *connected_groups)
+
+    if not is_valid_salmon_run(new_group):
+        return None
+
+    partial_score_before = sum(
+        scoring_salmon_run[len(group)] for group in connected_groups
+    )
+
+    partial_score_after = scoring_salmon_run[len(new_group)]
+
+    return partial_score_after - partial_score_before
+
+
+def calculate_hawk_reward(groups: list[set[HexPosition]], pos: HexPosition):
+    connected_groups = find_connected_groups(groups, pos)
+
+    if len(connected_groups):
+        return None
+
+    num_singles_before = sum(len(g) == 1 for g in groups)
+
+    return (
+        scoring_hawk_singles[num_singles_before + 1]
+        - scoring_hawk_singles[num_singles_before]
+    )
+
+
+def calculate_fox_reward(env: Environment, pos: HexPosition):
+    return len(set(w for _, w in env.adjacent_wildlife(pos)))
+
+
+def calculate_adjacent_fox_reward(
+    env: Environment, pos: HexPosition, wildlife: Wildlife
+):
+    adjacent_fox_reward = 0
+    for fox_pos, _ in env.adjacent_wildlife(pos, Wildlife.FOX):
+        if not env.has_adjacent_wildlife(fox_pos, wildlife):
+            adjacent_fox_reward += 1
+    return adjacent_fox_reward
+
+
+# TODO change argument order to match other functions
+def calculate_wreward(state: GameState, wildlife: Wildlife, pos: HexPosition):
     match wildlife:
         case Wildlife.BEAR:
             groups = state.env.wildlife_groups(Wildlife.BEAR)
-            connected_groups = find_connected_groups(groups, wpos)
-
-            if len(connected_groups) == 0:
-                reward = 0
-
-            elif len(connected_groups) == 1 and len(connected_groups[0]) == 1:
-                num_bear_pairs_before = sum(len(g) == 2 for g in groups)
-
-                reward = (
-                    scoring_bear_pairs[num_bear_pairs_before + 1]
-                    - scoring_bear_pairs[num_bear_pairs_before]
-                )
-
-            else:
-                return None
+            reward = calculate_bear_reward(groups, pos)
 
         case Wildlife.ELK:
             groups = state.env.wildlife_groups(Wildlife.ELK)
-            connected_groups = find_connected_groups(groups, wpos)
-
-            partial_score_before = sum(
-                get_max_elk_group_score(group) for group in connected_groups
-            )
-
-            partial_score_after = get_max_elk_group_score(
-                set.union({wpos}, *connected_groups)
-            )
-
-            reward = partial_score_after - partial_score_before
+            reward = calculate_elk_reward(groups, pos)
 
         case Wildlife.SALMON:
             groups = state.env.wildlife_groups(Wildlife.SALMON)
-            connected_groups = find_connected_groups(groups, wpos)
-
-            new_group = set.union({wpos}, *connected_groups)
-
-            if not is_valid_salmon_run(new_group):
-                return None
-
-            partial_score_before = sum(
-                scoring_salmon_run[len(group)] for group in connected_groups
-            )
-
-            partial_score_after = scoring_salmon_run[len(new_group)]
-
-            reward = partial_score_after - partial_score_before
+            reward = calculate_salmon_reward(groups, pos)
 
         case Wildlife.HAWK:
             groups = state.env.wildlife_groups(Wildlife.HAWK)
-            connected_groups = find_connected_groups(groups, wpos)
-
-            if len(connected_groups):
-                return None
-
-            num_singles_before = sum(len(g) == 1 for g in groups)
-
-            reward = (
-                scoring_hawk_singles[num_singles_before + 1]
-                - scoring_hawk_singles[num_singles_before]
-            )
+            reward = calculate_hawk_reward(groups, pos)
 
         case Wildlife.FOX:
-            reward = len(set(w for _, w in state.env.adjacent_wildlife(wpos)))
+            reward = calculate_fox_reward(state.env, pos)
 
-    adjacent_fox_reward = 0
-    for fox_pos, _ in state.env.adjacent_wildlife(wpos, Wildlife.FOX):
-        if not state.env.has_adjacent_wildlife(fox_pos, wildlife):
-            adjacent_fox_reward += 1
+    if reward is None:
+        return None
 
-    return reward + adjacent_fox_reward
+    return reward + calculate_adjacent_fox_reward(state.env, pos, wildlife)
 
 
 def get_actions_and_rewards(state: GameState) -> tuple[list[Action], list[int]]:

@@ -15,6 +15,13 @@ def adjacent_positions(pos: HexPosition) -> Generator[HexPosition, Any, None]:
         yield (q + dq, r + dr)
 
 
+def is_adjacent(pos1: HexPosition, pos2: HexPosition):
+    q1, r1 = pos1
+    q2, r2 = pos2
+    dq, dr = q1 - q2, r1 - r2
+    return (dq, dr) in hex_steps
+
+
 def share_edge(
     pos1: HexPosition,
     tile1: Tile,
@@ -121,13 +128,8 @@ class Environment:
             for h, groups_dict in connections.items()
         }
 
-    def wildlife_groups(
-        self, wildlife: Wildlife, extra_position: HexPosition | None = None
-    ):
+    def wildlife_groups(self, wildlife: Wildlife):
         positions = {p for p, w in self.wildlife.items() if w == wildlife}
-
-        if extra_position is not None:
-            positions.add(extra_position)
 
         visited = set[HexPosition]()
         groups = list[set[HexPosition]]()
