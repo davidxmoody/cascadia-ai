@@ -23,7 +23,6 @@ feature_names = [
     "nature_tokens",
     # "unclaimed_nt_rewards",
     # *(f"{w.value}_num_unoccupied_slots" for w in Wildlife),
-    # *(f"{h.value}_largest_area" for h in Habitat),
     "num_bear_pairs",
     "num_bear_singles",
     "num_elk",
@@ -34,6 +33,7 @@ feature_names = [
     *(f"{w.value}_best_adjacent_wreward" for w in Wildlife),
     *(f"{w.value}_best_unoccupied_wreward" for w in Wildlife),
     *(f"{h.value}_best_hreward" for h in Habitat),
+    *(f"{h.value}_largest_area" for h in Habitat),
 ]
 
 F = {name: i for i, name in enumerate(feature_names)}
@@ -323,6 +323,33 @@ class StateFeatures:
             best_hreward = max(hreward, best_hreward)
         return best_hreward
 
+    @cached
+    def _largest_area(
+        self,
+        habitat: Habitat,
+        placed_tile: tuple[HexPosition, int, int] | None,
+    ):
+        groups = self._habitat_groups(placed_tile)[habitat]
+        largest_group_size = len(groups[0])
+
+        if placed_tile is None:
+            return largest_group_size
+
+        pos, index, rot = placed_tile
+        tile = self.state.tile_display[index].rotate(rot)
+        connected_positions = {
+            apos
+            for apos, atile in self.state.env.adjacent_tiles(pos)
+            if share_edge(pos, tile, apos, atile, habitat)
+        }
+
+        new_group_size = 1
+        for group in groups:
+            if not group.isdisjoint(connected_positions):
+                new_group_size += len(group)
+
+        return max(new_group_size, largest_group_size)
+
     def get_features(
         self, data: NDArray[np.float32] | None = None, action: Action | None = None
     ):
@@ -374,15 +401,15 @@ class StateFeatures:
                 )
             )
 
+        placed_tile = (
+            None
+            if action is None
+            else (action.tile_position, action.tile_index, action.tile_rotation)
+        )
+
         for h in Habitat:
-            data[F[f"{h.value}_best_hreward"]] = self._best_hreward(
-                h,
-                (
-                    None
-                    if action is None
-                    else (action.tile_position, action.tile_index, action.tile_rotation)
-                ),
-            )
+            data[F[f"{h.value}_best_hreward"]] = self._best_hreward(h, placed_tile)
+            data[F[f"{h.value}_largest_area"]] = self._largest_area(h, placed_tile)
 
         return data
 

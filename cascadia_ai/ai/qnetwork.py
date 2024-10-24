@@ -9,11 +9,10 @@ from torch.nn.functional import mse_loss
 import lightning as L
 from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions_and_rewards
-from cascadia_ai.ai.features import StateFeatures, feature_names
+from cascadia_ai.ai.features2 import StateFeatures, feature_names
 from cascadia_ai.ai.training_data import get_greedy_played_games
 from cascadia_ai.game_state import GameState
 from cascadia_ai.score import calculate_score
-from cascadia_ai.tui import print_state
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -26,12 +25,20 @@ greedy_played_games = get_greedy_played_games()
 
 
 # %%
-state_features_list = [
-    StateFeatures(state)
-    for state, _ in tqdm(greedy_played_games, desc="Calculating features")
-]
+# state_features_list = [
+#     StateFeatures(state)
+#     for state, _ in tqdm(greedy_played_games, desc="Calculating features")
+# ]
 
-features = torch.from_numpy(np.vstack([sf._data for sf in state_features_list]))
+# TODO maybe generate a block of memory first and then fill in the features
+features = torch.from_numpy(
+    np.vstack(
+        [
+            StateFeatures(state).get_features()
+            for state, _ in tqdm(greedy_played_games, desc="Calculating features")
+        ]
+    )
+)
 
 labels = torch.tensor(
     [
@@ -117,8 +124,8 @@ gamma = 0.95
 with torch.no_grad():
     labels2 = []
     for sf in tqdm(state_features_list, desc="Calculating labels 2"):
-        actions, rewards = get_actions_and_rewards(sf._state)
-        if sf._state.turns_remaining == 1:
+        actions, rewards = get_actions_and_rewards(sf.state)
+        if sf.state.turns_remaining == 1:
             labels2.append(max(rewards))
         else:
             next_q_values = model(
@@ -138,7 +145,7 @@ class ReplayBuffer(Dataset):
             self.buffer.pop(0)
         sf = StateFeatures(state)
         actions, rewards = get_actions_and_rewards(state)
-        self.buffer.append((sf._data, sf.get_next_features(actions), rewards))
+        self.buffer.append((sf.get_features(), sf.get_next_features(actions), rewards))
 
     def __len__(self):
         return len(self.buffer)
@@ -224,14 +231,17 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
             i = rewards.index(max(rewards))
 
         else:
-            # next_features = torch.from_numpy(
-            #     StateFeatures(state).get_next_features(actions)
-            # )
             next_features = torch.from_numpy(
-                np.stack(
-                    [StateFeatures(state.copy().take_action(a))._data for a in actions]
-                )
+                StateFeatures(state).get_next_features(actions)
             )
+            # next_features = torch.from_numpy(
+            #     np.stack(
+            #         [
+            #             StateFeatures(state.copy().take_action(a)).get_features()
+            #             for a in actions
+            #         ]
+            #     )
+            # )
             with torch.no_grad():
                 q_values = model(next_features).squeeze()
             expected_rewards = q_values * gamma + torch.tensor(rewards)
