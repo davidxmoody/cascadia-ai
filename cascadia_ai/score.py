@@ -126,6 +126,16 @@ class Score(NamedTuple):
     nature_tokens: int
     total: int
 
+    def __repr__(self):
+        return ", ".join(
+            [
+                *(f"{k.value}:{v:>2}" for k, v in self.wildlife.items()),
+                *(f"{k.value}:{v:>2}" for k, v in self.habitat.items()),
+                f"nt:{self.nature_tokens:>2}",
+                f"total:{self.total:>3}",
+            ]
+        )
+
 
 def calculate_score(state: GameState):
     wildlife = calculate_wildlife_score(state.env)

@@ -43,13 +43,6 @@ console = Console(
 )
 
 
-def print_score(score: Score):
-    print(",  ".join(f"{k.value}: {v:>2}" for k, v in score.wildlife.items()))
-    print(",  ".join(f"{k.value}: {v:>2}" for k, v in score.habitat.items()))
-    print(f"nature: {score.nature_tokens:>2}")
-    print(f"total: {score.total:>3}")
-
-
 def print_env(env: Environment):
     chars: dict[tuple[int, int], str] = {}
 
@@ -126,5 +119,5 @@ def print_state(state: GameState):
     print_env(state.env)
     print()
 
-    print_score(score)
+    print(score)
     print()
