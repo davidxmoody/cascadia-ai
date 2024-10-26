@@ -6,10 +6,8 @@ import torch.nn as nn
 import lightning as L
 from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions_and_rewards
-from cascadia_ai.ai.features3 import StateFeatures, feature_names
+from cascadia_ai.ai.features3 import get_features
 from cascadia_ai.ai.training_data import get_greedy_played_games
-from cascadia_ai.enums import Wildlife
-from cascadia_ai.environments import HexPosition
 from cascadia_ai.game_state import GameState
 from cascadia_ai.score import calculate_score
 import numpy as np
@@ -23,12 +21,14 @@ greedy_played_games = get_greedy_played_games()
 
 # %%
 features_list = [
-    StateFeatures(state).get_features()
+    get_features(state)
     for state, _ in tqdm(greedy_played_games, desc="Calculating features")
 ]
 
-set_features = torch.from_numpy(np.stack([a for a, _ in features_list]))
-extra_features = torch.from_numpy(np.vstack([b for _, b in features_list]))
+features_tensors = [
+    torch.from_numpy(np.stack([f[i] for f in features_list]))
+    for i in range(len(features_list[0]))
+]
 
 labels = torch.tensor(
     [
@@ -40,45 +40,54 @@ labels = torch.tensor(
 
 # %%
 class DQNLightning(L.LightningModule):
-    def __init__(self, set_feature_dim: int, extra_feature_dim: int, hidden_dim: int):
+    def __init__(self, main_dim: int, set1_dim: int, set2_dim: int, hidden_dim: int):
         super().__init__()
 
-        self.element_mlp = nn.Sequential(
-            nn.Linear(set_feature_dim, hidden_dim),
+        self.set1_network = nn.Sequential(
+            nn.Linear(set1_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
         )
 
-        self.fc1 = nn.Linear(2 * hidden_dim + extra_feature_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, 1)
+        self.set2_network = nn.Sequential(
+            nn.Linear(set2_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+        )
+
+        self.final_network = nn.Sequential(
+            nn.Linear(main_dim + 2 * hidden_dim + 2 * hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1),
+        )
 
         self.loss_fn = nn.MSELoss()
 
-    def forward(self, set_features, extra_features):  # type: ignore
-        # print("forward", set_features.shape, extra_features.shape)
-        set_result = self.element_mlp(set_features)
-        # print("set_result", set_result.shape)
-        set_sum = set_result.sum(dim=1)
-        # print("set_sum", set_sum.shape)
-        set_max, _ = set_result.max(dim=1)
-        # print("set_max", set_max.shape)
-        combined = torch.cat([set_sum, set_max, extra_features], dim=1)
-        # print("combined", combined.shape)
-        x = torch.relu(self.fc1(combined))
-        x = torch.relu(self.fc2(x))
-        return self.fc3(x)
+    def forward(self, main_features, set1_features, set2_features):  # type: ignore
+        set1_out = self.set1_network(set1_features)
+        set2_out = self.set2_network(set2_features)
+
+        set1_max, set1_sum = set1_out.max(dim=1)[0], set1_out.sum(dim=1)
+        set2_max, set2_sum = set2_out.max(dim=1)[0], set2_out.sum(dim=1)
+
+        combined_features = torch.cat(
+            [main_features, set1_max, set1_sum, set2_max, set2_sum], dim=1
+        )
+
+        return self.final_network(combined_features)
 
     def training_step(self, batch):  # type: ignore
-        setf, extraf, y = batch
-        y_pred = self(setf, extraf)
+        mainf, set1f, set2f, y = batch
+        y_pred = self(mainf, set1f, set2f)
         loss = self.loss_fn(y_pred, y.reshape((-1, 1)))
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, batch):  # type: ignore
-        setf, extraf, y = batch
-        y_pred = self(setf, extraf)
+        mainf, set1f, set2f, y = batch
+        y_pred = self(mainf, set1f, set2f)
         loss = self.loss_fn(y_pred, y.reshape((-1, 1)))
         self.log("val_loss", loss)
 
@@ -87,11 +96,12 @@ class DQNLightning(L.LightningModule):
 
 
 # %%
-num_set_features = 15
-num_extra_features = len(feature_names)
 num_hidden = 20
+num_main_features = features_tensors[0].shape[1]
+num_set1_features = features_tensors[1].shape[2]
+num_set2_features = features_tensors[2].shape[2]
 
-dataset = TensorDataset(set_features, extra_features, labels)
+dataset = TensorDataset(*features_tensors, labels)
 
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
@@ -117,7 +127,9 @@ logger = TensorBoardLogger("tb_logs", name="setnn")
 
 trainer = L.Trainer(max_epochs=100, logger=logger)
 
-model = DQNLightning(num_set_features, num_extra_features, num_hidden)
+model = DQNLightning(
+    num_main_features, num_set1_features, num_set2_features, num_hidden
+)
 
 trainer.fit(model, train_loader, val_loader)
 
@@ -131,18 +143,14 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
             i = rewards.index(max(rewards))
 
         else:
-            # next_features = torch.from_numpy(
-            #     StateFeatures(state).get_next_features(actions)
-            # )
-            nfs = [
-                StateFeatures(state.copy().take_action(a)).get_features()
-                for a in actions
+            next_features = [get_features(state.copy().take_action(a)) for a in actions]
+            features_tensors = [
+                torch.from_numpy(np.stack([f[i] for f in next_features]))
+                for i in range(len(next_features[0]))
             ]
-            next_set_features = torch.from_numpy(np.stack([a for a, _ in nfs]))
-            next_extra_features = torch.from_numpy(np.stack([b for _, b in nfs]))
 
             with torch.no_grad():
-                q_values = model(next_set_features, next_extra_features).squeeze()
+                q_values = model(*features_tensors).squeeze()
             expected_rewards = q_values * gamma + torch.tensor(rewards)
             i = expected_rewards.argmax().item()
 
@@ -154,7 +162,6 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
 results = []
 for _ in tqdm(range(100), desc="Playing test games"):
     end_state = play_test_game(model, GameState())
-    # print_state(end_state)
     score = calculate_score(end_state)
     print(score)
     results.append(
