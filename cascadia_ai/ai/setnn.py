@@ -125,7 +125,7 @@ val_loader = DataLoader(
 
 logger = TensorBoardLogger("tb_logs", name="setnn")
 
-trainer = L.Trainer(max_epochs=100, logger=logger)
+trainer = L.Trainer(max_epochs=50, logger=logger)
 
 model = DQNLightning(
     num_main_features, num_set1_features, num_set2_features, num_hidden
@@ -135,7 +135,10 @@ trainer.fit(model, train_loader, val_loader)
 
 
 # %%
-def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
+def play_test_game(model: DQNLightning, state: GameState | None = None, gamma: float = 0.9):
+    if state is None:
+        state = GameState()
+
     while state.turns_remaining > 0:
         actions, rewards = get_actions_and_rewards(state)
 
@@ -161,7 +164,7 @@ def play_test_game(model: DQNLightning, state: GameState, gamma: float = 0.9):
 
 results = []
 for _ in tqdm(range(100), desc="Playing test games"):
-    end_state = play_test_game(model, GameState())
+    end_state = play_test_game(model)
     score = calculate_score(end_state)
     print(score)
     results.append(
