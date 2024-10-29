@@ -6,7 +6,7 @@ import torch.nn as nn
 import lightning as L
 from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions_and_rewards
-from cascadia_ai.ai.features3 import get_features
+from cascadia_ai.ai.features import get_features
 from cascadia_ai.ai.training_data import get_greedy_played_games
 from cascadia_ai.game_state import GameState
 from cascadia_ai.score import calculate_score
@@ -135,7 +135,9 @@ trainer.fit(model, train_loader, val_loader)
 
 
 # %%
-def play_test_game(model: DQNLightning, state: GameState | None = None, gamma: float = 0.9):
+def play_test_game(
+    model: DQNLightning, state: GameState | None = None, gamma: float = 0.9
+):
     if state is None:
         state = GameState()
 
