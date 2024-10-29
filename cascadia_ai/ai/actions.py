@@ -21,12 +21,22 @@ def find_connected_groups(groups: list[set[HexPosition]], pos: HexPosition):
     return [g for g in groups if not g.isdisjoint(adjacent)]
 
 
-def pick_best_rotations(state: GameState, tile: Tile, pos: HexPosition):
-    if tile.single_habitat:
-        return [0]
-
-    # TODO see if this can be optimised to prune obviously bad options
-    return list(range(6))
+def pick_best_rotations(
+    state: GameState,
+    tile: Tile,
+    pos: HexPosition,
+    hgroups: dict[Habitat, list[set[HexPosition]]],
+):
+    trotations = list(range(1 if tile.single_habitat else 6))
+    trewards = [
+        calculate_treward(state, hgroups, tile, pos, trot) for trot in trotations
+    ]
+    max_treward = max(trewards)
+    return [
+        (trot, treward)
+        for trot, treward in zip(trotations, trewards)
+        if treward == max_treward
+    ]
 
 
 def calculate_treward(
@@ -69,8 +79,7 @@ def tile_options(state: GameState):
     for tpos in state.env.all_adjacent_empty():
         for tindex in range(4):
             tile = state.tile_display[tindex]
-            for trot in pick_best_rotations(state, tile, tpos):
-                treward = calculate_treward(state, hgroups, tile, tpos, trot)
+            for trot, treward in pick_best_rotations(state, tile, tpos, hgroups):
                 yield (tindex, tpos, trot, treward)
 
 
