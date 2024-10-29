@@ -2,7 +2,7 @@ import numpy as np
 from collections import Counter
 from cascadia_ai.ai.actions import calculate_treward, calculate_wreward
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.game_state import GameState
+from cascadia_ai.game_state import Action, GameState
 from cascadia_ai.tiles import Tile
 
 
@@ -12,7 +12,10 @@ def pad_list(data: list[list], length: int):
     return data
 
 
-def get_features(s: GameState):
+def get_features(s: GameState, a: Action | None = None):
+    if a is not None:
+        s = s.copy().take_action(a)
+
     hgroups = s.env.habitat_groups()
     dummy_tiles = {h: Tile((h, h), frozenset()) for h in Habitat}
     bsizes = Counter(len(g) for g in s.env.wildlife_groups(Wildlife.BEAR))

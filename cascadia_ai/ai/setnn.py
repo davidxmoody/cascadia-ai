@@ -148,7 +148,7 @@ def play_test_game(
             i = rewards.index(max(rewards))
 
         else:
-            next_features = [get_features(state.copy().take_action(a)) for a in actions]
+            next_features = [get_features(state, a) for a in actions]
             features_tensors = [
                 torch.from_numpy(np.stack([f[i] for f in next_features]))
                 for i in range(len(next_features[0]))
