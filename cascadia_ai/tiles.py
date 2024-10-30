@@ -19,8 +19,26 @@ class Tile(NamedTuple):
         return self.habitats[0] == self.habitats[1]
 
     @property
+    def unique_habitats(self):
+        return set(self.habitats)
+
+    @property
     def nature_token_reward(self):
         return self.single_habitat
+
+    @property
+    def edges(self):
+        h1, h2 = self.habitats
+        rot = self.rotation
+
+        return [
+            h1 if 1 <= rot <= 3 else h2,
+            h1 if 2 <= rot <= 4 else h2,
+            h1 if 3 <= rot <= 5 else h2,
+            h2 if 1 <= rot <= 3 else h1,
+            h2 if 2 <= rot <= 4 else h1,
+            h2 if 3 <= rot <= 5 else h1,
+        ]
 
     def rotate(self, steps: int):
         return self._replace(rotation=(self.rotation + steps) % 6)
