@@ -46,9 +46,7 @@ class HabitatAreas:
                 connected_area_labels.add(self._edges[habitat][edge_key])
 
         new_area_size = 1 + sum(
-            size
-            for label, size in self._areas[habitat].items()
-            if label in connected_area_labels
+            self._areas[habitat][label] for label in connected_area_labels
         )
 
         prev_largest_area_size = self.largest_area(habitat)
@@ -102,30 +100,3 @@ class HabitatAreas:
 
             if not is_touching:
                 self._edges[habitat][edge_key] = next(iter(connected_areas[habitat]))
-
-
-# # %%
-# ha = HabitatAreas()
-# for pos, tile in greedy_played_games[110][0].env.tiles.items():
-#     print("placing tile", pos, tile)
-#     ha.place_tile(pos, tile)
-#     for h in Habitat:
-#         print(h.value, ha._areas[h])
-#         print(" ", ha._edges[h])
-
-
-# # %%
-# def quick_test(s: GameState):
-#     ha = HabitatAreas(s.env.tiles)
-#     hgroups = s.env.habitat_groups()
-#     for h in Habitat:
-#         assert ha.largest_area(h) == len(hgroups[h][0])
-
-#     for h in Habitat:
-#         for pos in s.env.all_adjacent_empty():
-#             assert calculate_treward(
-#                 s, hgroups, Tile((h, h), frozenset()), pos, 0
-#             ) == ha.get_simple_tile_reward(pos, h)
-
-
-# quick_test(s100)
