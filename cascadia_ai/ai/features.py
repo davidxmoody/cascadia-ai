@@ -6,6 +6,9 @@ from cascadia_ai.game_state import Action, GameState
 from cascadia_ai.tiles import Tile
 
 
+features_shapes = [[13], [37, 11], [34, 5]]
+
+
 def pad_list(data: list[list], length: int):
     while len(data) < length:
         data.append([0] * len(data[0]))
@@ -73,19 +76,3 @@ def get_features(s: GameState, a: Action | None = None):
         np.array(pad_list(wildlife_rewards, 37), dtype=np.float32),
         np.array(pad_list(tile_rewards, 34), dtype=np.float32),
     )
-
-
-# # %%
-# from cascadia_ai.ai.training_data import get_greedy_played_games
-
-# greedy_played_games = get_greedy_played_games()
-
-
-# # %%
-# from cascadia_ai.tui import print_state
-# from random import choice
-
-# s = choice(greedy_played_games)[0]
-# print_state(s)
-
-# f = get_features(s)

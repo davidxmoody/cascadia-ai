@@ -6,7 +6,7 @@ import torch.nn as nn
 import lightning as L
 from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions_and_rewards
-from cascadia_ai.ai.features import get_features
+from cascadia_ai.ai.features import get_features, features_shapes
 from cascadia_ai.ai.training_data import get_greedy_played_games
 from cascadia_ai.game_state import GameState
 from cascadia_ai.score import calculate_score
@@ -40,8 +40,12 @@ labels = torch.tensor(
 
 # %%
 class DQNLightning(L.LightningModule):
-    def __init__(self, main_dim: int, set1_dim: int, set2_dim: int, hidden_dim: int):
+    def __init__(self, shapes: list[list[int]] = features_shapes, hidden_dim: int = 20):
         super().__init__()
+
+        main_dim = shapes[0][0]
+        set1_dim = shapes[1][1]
+        set2_dim = shapes[2][1]
 
         self.set1_network = nn.Sequential(
             nn.Linear(set1_dim, hidden_dim),
@@ -96,11 +100,6 @@ class DQNLightning(L.LightningModule):
 
 
 # %%
-num_hidden = 20
-num_main_features = features_tensors[0].shape[1]
-num_set1_features = features_tensors[1].shape[2]
-num_set2_features = features_tensors[2].shape[2]
-
 dataset = TensorDataset(*features_tensors, labels)
 
 train_size = int(0.8 * len(dataset))
@@ -127,9 +126,7 @@ logger = TensorBoardLogger("tb_logs", name="setnn")
 
 trainer = L.Trainer(max_epochs=60, logger=logger)
 
-model = DQNLightning(
-    num_main_features, num_set1_features, num_set2_features, num_hidden
-)
+model = DQNLightning()
 
 trainer.fit(model, train_loader, val_loader)
 
@@ -139,10 +136,8 @@ torch.save(model.state_dict(), "data/model.pth")
 
 
 # %%
-model = DQNLightning(
-    num_main_features, num_set1_features, num_set2_features, num_hidden
-)
-model.load_state_dict(torch.load("data/model.pth"))
+model = DQNLightning()
+model.load_state_dict(torch.load("data/model.pth", weights_only=True))
 
 
 # %%
