@@ -1,4 +1,5 @@
-from typing import Dict, Tuple
+from copy import copy
+from typing import Dict, Iterable, Self, Tuple
 from cascadia_ai.enums import Habitat
 from cascadia_ai.tiles import Tile
 
@@ -22,17 +23,13 @@ def get_edge_key(pos: HexPosition, rot: int) -> EdgeKey:
     raise Exception("Invalid rotation")
 
 
-edge_key_cache = dict[HexPosition, list[EdgeKey]]()
+edge_key_cache = dict[HexPosition, tuple[EdgeKey, ...]]()
 
 
 def get_all_edge_keys(pos: HexPosition):
     if pos not in edge_key_cache:
-        edge_key_cache[pos] = [get_edge_key(pos, rot) for rot in range(6)]
+        edge_key_cache[pos] = tuple(get_edge_key(pos, rot) for rot in range(6))
     return edge_key_cache[pos]
-
-
-def get_tile_edge_keys(pos: HexPosition, tile: Tile, habitat: Habitat):
-    return [get_edge_key(pos, rot) for rot, h in enumerate(tile.edges) if h == habitat]
 
 
 class HabitatAreas:
@@ -43,6 +40,8 @@ class HabitatAreas:
     _areas: dict[AreaLabel, int]
     _edges: dict[EdgeKey, AreaLabel]
 
+    _child_cache: dict[tuple[EdgeKey, ...], Self]
+
     def __init__(self, habitat: Habitat, tiles: TileGrid | None = None):
         self.habitat = habitat
         self.largest_area = 0
@@ -51,11 +50,20 @@ class HabitatAreas:
         self._areas = {}
         self._edges = {}
 
+        self._child_cache = {}
+
         if tiles is not None:
             for pos, tile in tiles.items():
-                self.place_tile(pos, tile)
+                self._place_edges(self._get_tile_edge_keys(pos, tile))
 
-    def get_edges_reward(self, edge_keys: list[EdgeKey]):
+    def _get_tile_edge_keys(self, pos: HexPosition, tile: Tile):
+        all_edge_keys = get_all_edge_keys(pos)
+        return tuple(
+            all_edge_keys[rot] for rot, h in enumerate(tile.edges) if h == self.habitat
+        )
+
+    def _get_edges_reward(self, edge_keys: Iterable[EdgeKey]):
+        # TODO consider caching this too if necessary
         new_area = 1
         for edge_key in edge_keys:
             if edge_key in self._edges:
@@ -70,15 +78,12 @@ class HabitatAreas:
         return reward
 
     def get_tile_reward(self, pos: HexPosition, tile: Tile):
-        return self.get_edges_reward(get_tile_edge_keys(pos, tile, self.habitat))
+        return self._get_edges_reward(self._get_tile_edge_keys(pos, tile))
 
     def get_best_reward(self, pos: HexPosition):
-        return self.get_edges_reward(get_all_edge_keys(pos))
+        return self._get_edges_reward(get_all_edge_keys(pos))
 
-    def place_tile(self, pos: HexPosition, tile: Tile):
-        # TODO remove edges that have had a different habitat block them
-        edge_keys = get_tile_edge_keys(pos, tile, self.habitat)
-
+    def _place_edges(self, edge_keys: tuple[EdgeKey, ...]):
         connected_areas = {
             self._edges[edge_key] for edge_key in edge_keys if edge_key in self._edges
         }
@@ -125,3 +130,23 @@ class HabitatAreas:
                     del self._edges[edge_key]
                 else:
                     self._edges[edge_key] = label
+
+    def place_tile(self, pos: HexPosition, tile: Tile):
+        if self.habitat not in tile.habitats:
+            return self
+
+        edge_keys = self._get_tile_edge_keys(pos, tile)
+
+        if edge_keys not in self._child_cache:
+            new_obj = self.copy()
+            new_obj._place_edges(edge_keys)
+            self._child_cache[edge_keys] = new_obj
+
+        return self._child_cache[edge_keys]
+
+    def copy(self):
+        new_obj = copy(self)
+        new_obj._areas = dict(new_obj._areas)
+        new_obj._edges = dict(new_obj._edges)
+        new_obj._child_cache = {}
+        return new_obj
