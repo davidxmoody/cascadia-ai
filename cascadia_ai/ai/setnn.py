@@ -125,13 +125,24 @@ val_loader = DataLoader(
 
 logger = TensorBoardLogger("tb_logs", name="setnn")
 
-trainer = L.Trainer(max_epochs=50, logger=logger)
+trainer = L.Trainer(max_epochs=60, logger=logger)
 
 model = DQNLightning(
     num_main_features, num_set1_features, num_set2_features, num_hidden
 )
 
 trainer.fit(model, train_loader, val_loader)
+
+
+# %%
+torch.save(model.state_dict(), "data/model.pth")
+
+
+# %%
+model = DQNLightning(
+    num_main_features, num_set1_features, num_set2_features, num_hidden
+)
+model.load_state_dict(torch.load("data/model.pth"))
 
 
 # %%
