@@ -1,10 +1,9 @@
-from copy import deepcopy
 import numpy as np
 from collections import Counter, defaultdict
 from cascadia_ai.ai.actions import calculate_wreward
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import adjacent_positions
 from cascadia_ai.game_state import Action, GameState
+from cascadia_ai.positions import adjacent_positions
 
 Cache = defaultdict[str, dict]
 

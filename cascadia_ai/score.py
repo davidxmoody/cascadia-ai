@@ -1,12 +1,8 @@
 from typing import Generator, NamedTuple
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import (
-    Environment,
-    HexPosition,
-    adjacent_positions,
-    hex_steps,
-)
+from cascadia_ai.environments import Environment
 from cascadia_ai.game_state import GameState
+from cascadia_ai.positions import HexPosition, adjacent_positions
 
 
 class ScoreTable:
@@ -35,6 +31,9 @@ def calculate_bear_score(env: Environment):
     groups = env.wildlife_groups(Wildlife.BEAR)
     num_valid_groups = sum(len(g) == 2 for g in groups)
     return scoring_bear_pairs[num_valid_groups]
+
+
+hex_steps: list[tuple[int, int]] = [(0, 1), (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1)]
 
 
 def iter_elk_line_options(

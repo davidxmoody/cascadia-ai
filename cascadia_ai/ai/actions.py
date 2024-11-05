@@ -1,11 +1,7 @@
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import (
-    Environment,
-    HexPosition,
-    adjacent_positions,
-    share_edge,
-)
+from cascadia_ai.environments import Environment, share_edge
 from cascadia_ai.game_state import Action, GameState
+from cascadia_ai.positions import HexPosition, adjacent_positions
 from cascadia_ai.tiles import Tile
 from cascadia_ai.score import (
     scoring_bear_pairs,

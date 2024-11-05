@@ -1,11 +1,8 @@
 from copy import copy
-from typing import Dict, Iterable, Self, Tuple
+from typing import Iterable, Self
 from cascadia_ai.enums import Habitat
+from cascadia_ai.positions import HexPosition
 from cascadia_ai.tiles import Tile
-
-# TODO put these somewhere else so there isn't a circular import
-HexPosition = Tuple[int, int]
-TileGrid = Dict[HexPosition, Tile]
 
 AreaLabel = int
 EdgeKey = int
@@ -42,7 +39,7 @@ class HabitatAreas:
 
     _child_cache: dict[tuple[EdgeKey, ...], Self]
 
-    def __init__(self, habitat: Habitat, tiles: TileGrid | None = None):
+    def __init__(self, habitat: Habitat, tiles: dict[HexPosition, Tile] | None = None):
         self.habitat = habitat
         self.largest_area = 0
 

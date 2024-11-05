@@ -2,25 +2,8 @@ from collections import Counter
 from copy import deepcopy
 from cascadia_ai.areas import HabitatAreas
 from cascadia_ai.enums import Habitat, Wildlife
+from cascadia_ai.positions import HexPosition, adjacent_positions
 from cascadia_ai.tiles import Tile
-from typing import Any, Dict, Generator, Tuple
-
-HexPosition = Tuple[int, int]
-
-hex_steps: list[HexPosition] = [(1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)]
-
-
-def adjacent_positions(pos: HexPosition) -> Generator[HexPosition, Any, None]:
-    q, r = pos
-    for dq, dr in hex_steps:
-        yield (q + dq, r + dr)
-
-
-def is_adjacent(pos1: HexPosition, pos2: HexPosition):
-    q1, r1 = pos1
-    q2, r2 = pos2
-    dq, dr = q1 - q2, r1 - r2
-    return (dq, dr) in hex_steps
 
 
 def share_edge(
@@ -37,8 +20,8 @@ def share_edge(
     return edge1 == edge2 and (habitat is None or edge1 == habitat)
 
 
-TileGrid = Dict[HexPosition, Tile]
-WildlifeGrid = Dict[HexPosition, Wildlife]
+TileGrid = dict[HexPosition, Tile]
+WildlifeGrid = dict[HexPosition, Wildlife]
 
 
 starting_tile_defs: list[tuple[str, str, str]] = [
