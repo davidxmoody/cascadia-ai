@@ -18,85 +18,102 @@ def get_edge_key(pos: HexPosition, rot: int) -> EdgeKey:
     raise Exception("Invalid rotation")
 
 
-class HabitatAreas:
-    _next_label: AreaLabel
-    _areas: dict[Habitat, dict[AreaLabel, int]]
-    _edges: dict[Habitat, dict[EdgeKey, AreaLabel]]
+edge_key_cache = dict[HexPosition, list[EdgeKey]]()
 
-    def __init__(self, tiles: TileGrid | None = None):
+
+def get_all_edge_keys(pos: HexPosition):
+    if pos not in edge_key_cache:
+        edge_key_cache[pos] = [get_edge_key(pos, rot) for rot in range(6)]
+    return edge_key_cache[pos]
+
+
+class HabitatAreas:
+    habitat: Habitat
+    largest_area: int
+
+    _next_label: AreaLabel
+    _areas: dict[AreaLabel, int]
+    _edges: dict[EdgeKey, AreaLabel]
+
+    def __init__(self, habitat: Habitat, tiles: TileGrid | None = None):
+        self.habitat = habitat
+        self.largest_area = 0
+
         self._next_label = 0
-        self._areas = {h: {} for h in Habitat}
-        self._edges = {h: {} for h in Habitat}
+        self._areas = {}
+        self._edges = {}
 
         if tiles is not None:
             for pos, tile in tiles.items():
                 self.place_tile(pos, tile)
 
-    def largest_area(self, habitat: Habitat):
-        return max(self._areas[habitat].values())
-
-    def get_tile_reward(self, pos: HexPosition, tile: Tile):
-        pass
-
-    def get_simple_tile_reward(self, pos: HexPosition, habitat: Habitat):
-        connected_area_labels = set[AreaLabel]()
-        for rot in range(6):
-            edge_key = get_edge_key(pos, rot)
-            if edge_key in self._edges[habitat]:
-                connected_area_labels.add(self._edges[habitat][edge_key])
-
-        new_area_size = 1 + sum(
-            self._areas[habitat][label] for label in connected_area_labels
-        )
-
-        prev_largest_area_size = self.largest_area(habitat)
+    def get_reward(self, edge_keys: list[EdgeKey]):
+        new_area = 1
+        for edge_key in edge_keys:
+            if edge_key in self._edges:
+                new_area += self._areas[self._edges[edge_key]]
 
         reward = 0
-        if new_area_size > prev_largest_area_size:
-            reward += new_area_size - prev_largest_area_size
-            if new_area_size >= 7 and not (prev_largest_area_size >= 7):
+        if new_area > self.largest_area:
+            reward += new_area - self.largest_area
+            if new_area >= 7 and not (self.largest_area >= 7):
                 reward += 2
 
         return reward
 
+    def get_best_reward(self, pos: HexPosition):
+        return self.get_reward(get_all_edge_keys(pos))
+
     def place_tile(self, pos: HexPosition, tile: Tile):
         edge_keys = {
-            get_edge_key(pos, rot): habitat for rot, habitat in enumerate(tile.edges)
+            get_edge_key(pos, rot)
+            for rot, habitat in enumerate(tile.edges)
+            if habitat == self.habitat
         }
 
-        connected_areas = {h: set[AreaLabel]() for h in tile.unique_habitats}
+        connected_areas = {
+            self._edges[edge_key] for edge_key in edge_keys if edge_key in self._edges
+        }
 
-        for edge_key, habitat in edge_keys.items():
-            if edge_key in self._edges[habitat]:
-                connected_areas[habitat].add(self._edges[habitat][edge_key])
+        if len(connected_areas) == 0:
+            label = self._next_label
+            self._next_label += 1
 
-        for habitat, area_labels in connected_areas.items():
-            if len(area_labels) == 0:
-                new_label = self._next_label
-                self._next_label += 1
-                area_labels.add(new_label)
-                self._areas[habitat][new_label] = 0
+            size = 1
+            self._areas[label] = size
+            self.largest_area = max(self.largest_area, size)
 
-            main_label, *labels_to_merge = area_labels
+            for edge_key in edge_keys:
+                self._edges[edge_key] = label
 
-            if labels_to_merge:
-                for label, size in list(self._areas[habitat].items()):
-                    if label in labels_to_merge:
-                        self._areas[habitat][main_label] += size
-                        del self._areas[habitat][label]
-                for edge_key, label in list(self._edges[habitat].items()):
-                    if label in labels_to_merge:
-                        self._edges[habitat][edge_key] = main_label
+        elif len(connected_areas) == 1:
+            label = next(iter(connected_areas))
 
-            self._areas[habitat][main_label] += 1
+            size = self._areas[label] + 1
+            self._areas[label] = size
+            self.largest_area = max(self.largest_area, size)
 
-        for edge_key, habitat in edge_keys.items():
-            is_touching = False
+            for edge_key in edge_keys:
+                if edge_key in self._edges:
+                    del self._edges[edge_key]
+                else:
+                    self._edges[edge_key] = label
 
-            for edges in self._edges.values():
-                if edge_key in edges:
-                    is_touching = True
-                    del edges[edge_key]
+        else:
+            label, *labels_to_merge = connected_areas
 
-            if not is_touching:
-                self._edges[habitat][edge_key] = next(iter(connected_areas[habitat]))
+            size = sum(self._areas[l] for l in connected_areas) + 1
+            self._areas[label] = size
+            self.largest_area = max(self.largest_area, size)
+
+            for label_to_merge in labels_to_merge:
+                del self._areas[label_to_merge]
+            for edge_key, other_label in self._edges.items():
+                if other_label in labels_to_merge:
+                    self._edges[edge_key] = label
+
+            for edge_key in edge_keys:
+                if edge_key in self._edges:
+                    del self._edges[edge_key]
+                else:
+                    self._edges[edge_key] = label

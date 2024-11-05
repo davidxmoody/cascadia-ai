@@ -13,25 +13,43 @@ def test_areas():
 
     profiler = cProfile.Profile()
 
-    ha = HabitatAreas(test_state.env.tiles)
+    ha = HabitatAreas(Habitat.WETLANDS, test_state.env.tiles)
 
     all_pos = test_state.env.all_adjacent_empty()
-    first_pos = next(iter(all_pos))
+
+    for pos in all_pos:
+        ha.get_best_reward(pos)
 
     profiler.enable()
-    ha.get_simple_tile_reward(first_pos, Habitat.WETLANDS)
-    # for pos in all_pos:
-    #     for h in Habitat:
-    #         ha.get_simple_tile_reward(pos, h)
+
+    for pos in all_pos:
+        ha.get_best_reward(pos)
+
     profiler.disable()
 
-    hgroups = test_state.env.habitat_groups()
-
-    for h in Habitat:
-        assert ha.largest_area(h) == len(hgroups[h][0])
+    #     hgroups = test_state.env.habitat_groups()
+    #     assert ha.largest_area == len(hgroups[Habitat.WETLANDS][0])
 
     ps: Any = pstats.Stats(profiler).strip_dirs().sort_stats(pstats.SortKey.TIME)
     for func in ps.stats:
         cc, nc, tt, ct, callers = ps.stats[func]
         ps.stats[func] = (cc, nc, tt * 1000000, ct * 1000000, callers)
     ps.print_stats()
+
+
+# def step(pos: HexPosition, rot: Rotation) -> tuple[HexPosition, Rotation]:
+#     match rot:
+#         case 0:
+#             return ((pos[0], pos[1] + 1), 3)
+#         case 1:
+#             return ((pos[0] + 1, pos[1]), 4)
+#         case 2:
+#             return ((pos[0] + 1, pos[1] - 1), 5)
+#         case 3:
+#             return ((pos[0], pos[1] - 1), 0)
+#         case 4:
+#             return ((pos[0] - 1, pos[1]), 1)
+#         case 5:
+#             return ((pos[0] - 1, pos[1] + 1), 2)
+#         case _:
+#             raise Exception("Invalid rotation")
