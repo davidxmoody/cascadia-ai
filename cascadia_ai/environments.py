@@ -1,5 +1,6 @@
 from collections import Counter
 from copy import deepcopy
+from cascadia_ai.areas import HabitatAreas
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.tiles import Tile
 from typing import Any, Dict, Generator, Tuple
@@ -61,10 +62,12 @@ starting_tiles: list[TileGrid] = [
 class Environment:
     tiles: TileGrid
     wildlife: WildlifeGrid
+    areas: dict[Habitat, HabitatAreas]
 
     def __init__(self, starting_tile_group: TileGrid):
         self.tiles = dict(starting_tile_group)
         self.wildlife = {}
+        self.areas = {h: HabitatAreas(h, self.tiles) for h in Habitat}
 
     def adjacent_tiles(self, pos: HexPosition):
         return (
@@ -171,6 +174,8 @@ class Environment:
         if not self.can_place_tile(pos):
             raise ValueError("Cannot place tile there")
         self.tiles[pos] = tile
+        for h in Habitat:
+            self.areas[h].place_tile(pos, tile)
 
     def place_wildlife(self, pos: HexPosition, wildlife: Wildlife):
         if not self.can_place_wildlife(pos, wildlife):

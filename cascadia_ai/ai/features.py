@@ -1,9 +1,8 @@
 import numpy as np
 from collections import Counter
-from cascadia_ai.ai.actions import calculate_treward, calculate_wreward
+from cascadia_ai.ai.actions import calculate_wreward
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.game_state import Action, GameState
-from cascadia_ai.tiles import Tile
 
 
 features_shapes = [[13], [37, 11], [34, 5]]
@@ -20,7 +19,6 @@ def get_features(s: GameState, a: Action | None = None):
         s = s.copy().take_action(a)
 
     hgroups = s.env.habitat_groups()
-    dummy_tiles = {h: Tile((h, h), frozenset()) for h in Habitat}
     bsizes = Counter(len(g) for g in s.env.wildlife_groups(Wildlife.BEAR))
     wcounter = Counter(s.env.wildlife.values())
 
@@ -64,15 +62,17 @@ def get_features(s: GameState, a: Action | None = None):
             ]
         )
 
-        tile_rewards.append(
-            [
-                calculate_treward(s, hgroups, tile, pos, 0)
-                for tile in dummy_tiles.values()
-            ]
-        )
+        tile_rewards.append([s.env.areas[h].get_best_reward(pos) for h in Habitat])
 
     return (
         np.array(global_features, dtype=np.float32),
         np.array(pad_list(wildlife_rewards, 37), dtype=np.float32),
         np.array(pad_list(tile_rewards, 34), dtype=np.float32),
     )
+
+
+def get_next_features(s: GameState, actions: list[Action]):
+    features_list = [get_features(s, a) for a in actions]
+    return [
+        np.stack([f[i] for f in features_list]) for i in range(len(features_list[0]))
+    ]

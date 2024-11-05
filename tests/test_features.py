@@ -3,21 +3,27 @@ import cProfile
 import pstats
 from typing import Any
 from cascadia_ai.ai.actions import get_actions_and_rewards
+from cascadia_ai.areas import HabitatAreas
+from cascadia_ai.enums import Habitat
 from cascadia_ai.game_state import GameState
-from cascadia_ai.ai.features2 import StateFeatures
+from cascadia_ai.ai.features import get_next_features
 
 
 def test_features():
     with open("data/test_state.pkl", "rb") as f:
         test_state: GameState = pickle.load(f)
+        # TODO fix this
+        test_state.env.areas = {
+            h: HabitatAreas(h, test_state.env.tiles) for h in Habitat
+        }
 
     profiler = cProfile.Profile()
 
+    actions, _ = get_actions_and_rewards(test_state)
+
     profiler.enable()
 
-    sf = StateFeatures(test_state)
-    actions, _ = get_actions_and_rewards(test_state)
-    sf.get_next_features(actions)
+    get_next_features(test_state, actions)
 
     profiler.disable()
 

@@ -1,20 +1,24 @@
+from typing import Dict, Tuple
 from cascadia_ai.enums import Habitat
-from cascadia_ai.environments import HexPosition, TileGrid
 from cascadia_ai.tiles import Tile
 
+# TODO put these somewhere else so there isn't a circular import
+HexPosition = Tuple[int, int]
+TileGrid = Dict[HexPosition, Tile]
+
 AreaLabel = int
-EdgeKey = tuple[int, int, int]
+EdgeKey = int
 
 
 def get_edge_key(pos: HexPosition, rot: int) -> EdgeKey:
     if 0 <= rot <= 2:
-        return (pos[0], pos[1], rot)
+        return pos[0] * 1000 + pos[1] * 10 + rot
     if rot == 3:
-        return (pos[0], pos[1] - 1, 0)
+        return pos[0] * 1000 + (pos[1] - 1) * 10
     if rot == 4:
-        return (pos[0] - 1, pos[1], 1)
+        return (pos[0] - 1) * 1000 + pos[1] * 10 + 1
     if rot == 5:
-        return (pos[0] - 1, pos[1] + 1, 2)
+        return (pos[0] - 1) * 1000 + (pos[1] + 1) * 10 + 2
     raise Exception("Invalid rotation")
 
 
@@ -25,6 +29,10 @@ def get_all_edge_keys(pos: HexPosition):
     if pos not in edge_key_cache:
         edge_key_cache[pos] = [get_edge_key(pos, rot) for rot in range(6)]
     return edge_key_cache[pos]
+
+
+def get_tile_edge_keys(pos: HexPosition, tile: Tile, habitat: Habitat):
+    return [get_edge_key(pos, rot) for rot, h in enumerate(tile.edges) if h == habitat]
 
 
 class HabitatAreas:
@@ -47,7 +55,7 @@ class HabitatAreas:
             for pos, tile in tiles.items():
                 self.place_tile(pos, tile)
 
-    def get_reward(self, edge_keys: list[EdgeKey]):
+    def get_edges_reward(self, edge_keys: list[EdgeKey]):
         new_area = 1
         for edge_key in edge_keys:
             if edge_key in self._edges:
@@ -61,15 +69,15 @@ class HabitatAreas:
 
         return reward
 
+    def get_tile_reward(self, pos: HexPosition, tile: Tile):
+        return self.get_edges_reward(get_tile_edge_keys(pos, tile, self.habitat))
+
     def get_best_reward(self, pos: HexPosition):
-        return self.get_reward(get_all_edge_keys(pos))
+        return self.get_edges_reward(get_all_edge_keys(pos))
 
     def place_tile(self, pos: HexPosition, tile: Tile):
-        edge_keys = {
-            get_edge_key(pos, rot)
-            for rot, habitat in enumerate(tile.edges)
-            if habitat == self.habitat
-        }
+        # TODO remove edges that have had a different habitat block them
+        edge_keys = get_tile_edge_keys(pos, tile, self.habitat)
 
         connected_areas = {
             self._edges[edge_key] for edge_key in edge_keys if edge_key in self._edges
