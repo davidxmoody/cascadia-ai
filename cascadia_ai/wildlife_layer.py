@@ -12,7 +12,7 @@ from cascadia_ai.positions import HexPosition, adjacent_positions
 GroupLabel = int
 
 
-class WildlifeGroups:
+class WildlifeLayer:
     wildlife: Wildlife
     count: int
     groups: list[frozenset[HexPosition]]

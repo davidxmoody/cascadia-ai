@@ -20,8 +20,8 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
     if a is None:
         turns_remaining = s.turns_remaining
         nature_tokens = s.env.nature_tokens
-        hareas = s.env.hareas
-        wgroups = s.env.wgroups
+        hlayers = s.env.hlayers
+        wlayers = s.env.wlayers
         unoccupied_tiles = set(s.env.unoccupied_tiles())
         adjacent_empty = s.env.all_adjacent_empty()
 
@@ -44,19 +44,19 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
         if wildlife_target is not None and wildlife_target.nature_token_reward:
             nature_tokens += 1
 
-        hareas = {
+        hlayers = {
             h: area.place_tile(a.tile_position, placed_tile)
-            for h, area in s.env.hareas.items()
+            for h, area in s.env.hlayers.items()
         }
 
-        wgroups = (
-            s.env.wgroups
+        wlayers = (
+            s.env.wlayers
             if a.wildlife_position is None
             else {
                 w: groups.place_wildlife(
                     a.wildlife_position, s.wildlife_display[a.wildlife_index]
                 )
-                for w, groups in s.env.wgroups.items()
+                for w, groups in s.env.wlayers.items()
             }
         )
 
@@ -76,18 +76,18 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
             if apos not in s.env.tiles
         )
 
-    bsizes = Counter(len(g) for g in wgroups[Wildlife.BEAR].groups)
+    bsizes = Counter(len(g) for g in wlayers[Wildlife.BEAR].groups)
 
     global_features = [
         turns_remaining,
         nature_tokens,
         bsizes[2],
         bsizes[1],
-        wgroups[Wildlife.ELK].count,
-        wgroups[Wildlife.SALMON].count,
-        wgroups[Wildlife.HAWK].count,
-        wgroups[Wildlife.FOX].count,
-        *(hareas[h].largest_area for h in Habitat),
+        wlayers[Wildlife.ELK].count,
+        wlayers[Wildlife.SALMON].count,
+        wlayers[Wildlife.HAWK].count,
+        wlayers[Wildlife.FOX].count,
+        *(hlayers[h].largest_area for h in Habitat),
     ]
 
     wildlife_rewards = []
@@ -99,7 +99,7 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
                 int(tile.nature_token_reward),
                 *(int(w in tile.wildlife_slots) for w in Wildlife),
                 *(
-                    (0 if w not in tile.wildlife_slots else wgroups[w].get_reward(pos))
+                    (0 if w not in tile.wildlife_slots else wlayers[w].get_reward(pos))
                     for w in Wildlife
                 ),
             ]
@@ -110,11 +110,11 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
             [
                 0,
                 *(0 for _ in Wildlife),
-                *(wgroups[w].get_reward(pos) for w in Wildlife),
+                *(wlayers[w].get_reward(pos) for w in Wildlife),
             ]
         )
 
-        tile_rewards.append([hareas[h].get_best_reward(pos) for h in Habitat])
+        tile_rewards.append([hlayers[h].get_best_reward(pos) for h in Habitat])
 
     return (
         np.array(global_features, dtype=np.float32),

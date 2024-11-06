@@ -2,7 +2,7 @@ import pickle
 import cProfile
 import pstats
 from typing import Any
-from cascadia_ai.areas import HabitatAreas
+from cascadia_ai.habitat_layer import HabitatLayer
 from cascadia_ai.enums import Habitat
 from cascadia_ai.game_state import GameState
 
@@ -13,7 +13,7 @@ def test_areas():
 
     profiler = cProfile.Profile()
 
-    ha = HabitatAreas(Habitat.WETLANDS, test_state.env.tiles)
+    ha = HabitatLayer(Habitat.WETLANDS, test_state.env.tiles)
 
     all_pos = test_state.env.all_adjacent_empty()
 

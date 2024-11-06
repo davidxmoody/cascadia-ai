@@ -29,7 +29,7 @@ def get_all_edge_keys(pos: HexPosition):
     return edge_key_cache[pos]
 
 
-class HabitatAreas:
+class HabitatLayer:
     habitat: Habitat
     largest_area: int
 
@@ -52,6 +52,10 @@ class HabitatAreas:
         if tiles is not None:
             for pos, tile in tiles.items():
                 self._place_edges(self._get_tile_edge_keys(pos, tile))
+
+    @property
+    def score(self):
+        return self.largest_area + (2 if self.largest_area >= 7 else 0)
 
     def _get_tile_edge_keys(self, pos: HexPosition, tile: Tile):
         all_edge_keys = get_all_edge_keys(pos)
