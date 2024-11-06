@@ -124,7 +124,14 @@ class Score(NamedTuple):
     wildlife: dict[Wildlife, int]
     habitat: dict[Habitat, int]
     nature_tokens: int
-    total: int
+
+    @property
+    def total(self):
+        return (
+            sum(self.wildlife.values())
+            + sum(self.habitat.values())
+            + self.nature_tokens
+        )
 
     def __repr__(self):
         return ", ".join(
@@ -146,5 +153,4 @@ def calculate_score(state: GameState):
         wildlife=wildlife,
         habitat=habitat,
         nature_tokens=state.env.nature_tokens,
-        total=sum(wildlife.values()) + sum(habitat.values()) + state.env.nature_tokens,
     )
