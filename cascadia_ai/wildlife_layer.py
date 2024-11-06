@@ -16,7 +16,7 @@ class WildlifeLayer:
     count: int
     _wildlife: Wildlife
     _groups: list[frozenset[HexPosition]]
-    _reward_cache: dict[HexPosition, int | None]
+    _reward_cache: dict[HexPosition, int]
     _child_cache: dict[HexPosition, Self]
 
     def __init__(self, wildlife: Wildlife):
@@ -34,27 +34,31 @@ class WildlifeLayer:
         if pos in self._reward_cache:
             return self._reward_cache[pos]
 
+        connected_groups = self._get_connected_groups(pos)
+
         match self._wildlife:
             case Wildlife.BEAR:
-                connected_groups = self._get_connected_groups(pos)
-
                 if len(connected_groups) == 0:
                     reward = 0
 
-                elif len(connected_groups) == 1 and len(connected_groups[0]) == 1:
+                else:
                     num_bear_pairs_before = sum(len(g) == 2 for g in self._groups)
+                    num_bear_pairs_after = num_bear_pairs_before
+
+                    if len(connected_groups) == 1 and len(connected_groups[0]) == 1:
+                        num_bear_pairs_after += 1
+
+                    else:
+                        for group in connected_groups:
+                            if len(group) == 2:
+                                num_bear_pairs_after -= 1
 
                     reward = (
-                        scoring_bear_pairs[num_bear_pairs_before + 1]
+                        scoring_bear_pairs[num_bear_pairs_after]
                         - scoring_bear_pairs[num_bear_pairs_before]
                     )
 
-                else:
-                    reward = None
-
             case Wildlife.ELK:
-                connected_groups = self._get_connected_groups(pos)
-
                 partial_score_before = sum(
                     get_max_elk_group_score(group) for group in connected_groups
                 )
@@ -66,12 +70,14 @@ class WildlifeLayer:
                 reward = partial_score_after - partial_score_before
 
             case Wildlife.SALMON:
-                connected_groups = self._get_connected_groups(pos)
-
                 new_group = set.union({pos}, *connected_groups)
 
                 if not is_valid_salmon_run(new_group):
-                    reward = None
+                    reward = -1 * sum(
+                        scoring_salmon_run[len(group)]
+                        for group in connected_groups
+                        if is_valid_salmon_run(group)
+                    )
 
                 else:
                     partial_score_before = sum(
@@ -83,18 +89,18 @@ class WildlifeLayer:
                     reward = partial_score_after - partial_score_before
 
             case Wildlife.HAWK:
-                connected_groups = self._get_connected_groups(pos)
+                num_singles_before = sum(len(g) == 1 for g in self._groups)
+                num_singles_after = num_singles_before
 
                 if len(connected_groups):
-                    reward = None
-
+                    num_singles_after -= sum(len(g) == 1 for g in connected_groups)
                 else:
-                    num_singles_before = sum(len(g) == 1 for g in self._groups)
+                    num_singles_after += 1
 
-                    reward = (
-                        scoring_hawk_singles[num_singles_before + 1]
-                        - scoring_hawk_singles[num_singles_before]
-                    )
+                reward = (
+                    scoring_hawk_singles[num_singles_after]
+                    - scoring_hawk_singles[num_singles_before]
+                )
 
             case Wildlife.FOX:
                 raise Exception("Fox reward not supported")

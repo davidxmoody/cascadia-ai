@@ -6,7 +6,7 @@ import torch.nn as nn
 import lightning as L
 from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions_and_rewards
-from cascadia_ai.ai.features import get_features, features_shapes
+from cascadia_ai.ai.features import get_features, features_shapes, get_next_features
 from cascadia_ai.ai.training_data import get_greedy_played_games
 from cascadia_ai.game_state import GameState
 import numpy as np
@@ -142,26 +142,28 @@ model.load_state_dict(torch.load("data/model.pth", weights_only=True))
 
 # %%
 def play_test_game(
-    model: DQNLightning, state: GameState | None = None, gamma: float = 0.9
+    model: DQNLightning,
+    state: GameState | None = None,
+    gamma=0.9,
+    until_turns_remaining=0,
 ):
     if state is None:
         state = GameState()
 
-    while state.turns_remaining > 0:
+    while state.turns_remaining > until_turns_remaining:
         actions, rewards = get_actions_and_rewards(state)
 
         if state.turns_remaining == 1:
             i = rewards.index(max(rewards))
 
         else:
-            next_features = [get_features(state, a) for a in actions]
-            features_tensors = [
-                torch.from_numpy(np.stack([f[i] for f in next_features]))
-                for i in range(len(next_features[0]))
+            next_features = [
+                torch.from_numpy(nparray)
+                for nparray in get_next_features(state, actions)
             ]
 
             with torch.no_grad():
-                q_values = model(*features_tensors).squeeze()
+                q_values = model(*next_features).squeeze()
             expected_rewards = q_values * gamma + torch.tensor(rewards)
             i = expected_rewards.argmax().item()
 
@@ -175,7 +177,6 @@ for _ in tqdm(range(100), desc="Playing test games"):
     end_state = play_test_game(model)
     score = end_state.env.score
     print_state(end_state)
-    print(score)
     results.append(
         {
             **{k.value: v for k, v in score.wildlife.items()},

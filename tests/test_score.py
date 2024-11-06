@@ -1,13 +1,5 @@
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environment import Environment
-from cascadia_ai.score import (
-    calculate_habitat_scores,
-    calculate_bear_score,
-    calculate_elk_score,
-    calculate_salmon_score,
-    calculate_hawk_score,
-    calculate_fox_score,
-)
 from cascadia_ai.tiles import Tile
 
 
@@ -34,171 +26,171 @@ def test_habitat_score():
         ]
     )
 
-    assert calculate_habitat_scores(env) == {
-        Habitat("M"): 2,
-        Habitat("F"): 1,
-        Habitat("P"): 1,
-        Habitat("W"): 1,
-        Habitat("R"): 2,
-    }
+    score = env.score
+
+    assert score.habitat[Habitat("M")] == 2
+    assert score.habitat[Habitat("F")] == 1
+    assert score.habitat[Habitat("P")] == 1
+    assert score.habitat[Habitat("W")] == 1
+    assert score.habitat[Habitat("R")] == 2
 
 
 def test_habitat_score_bonus():
     area_size = 10
     env = make_env([((i, 0), "MMb", 0) for i in range(area_size)])
 
-    assert calculate_habitat_scores(env)[Habitat("M")] == area_size + 2
+    assert env.score.habitat[Habitat("M")] == area_size + 2
 
 
 def test_bear_score():
     env = make_env([((q, r), "MMb", 0) for q in range(3) for r in range(11)])
-    assert calculate_bear_score(env) == 0
+    assert env.score.wildlife[Wildlife.BEAR] == 0
 
     env.place_wildlife((0, 0), Wildlife.BEAR)
-    assert calculate_bear_score(env) == 0
+    assert env.score.wildlife[Wildlife.BEAR] == 0
 
     env.place_wildlife((1, 0), Wildlife.BEAR)
-    assert calculate_bear_score(env) == 4
+    assert env.score.wildlife[Wildlife.BEAR] == 4
 
     env.place_wildlife((2, 0), Wildlife.BEAR)
-    assert calculate_bear_score(env) == 0
+    assert env.score.wildlife[Wildlife.BEAR] == 0
 
     env.place_wildlife((0, 2), Wildlife.BEAR)
     env.place_wildlife((1, 2), Wildlife.BEAR)
-    assert calculate_bear_score(env) == 4
+    assert env.score.wildlife[Wildlife.BEAR] == 4
 
     env.place_wildlife((0, 4), Wildlife.BEAR)
     env.place_wildlife((1, 4), Wildlife.BEAR)
-    assert calculate_bear_score(env) == 11
+    assert env.score.wildlife[Wildlife.BEAR] == 11
 
     env.place_wildlife((0, 6), Wildlife.BEAR)
     env.place_wildlife((1, 6), Wildlife.BEAR)
-    assert calculate_bear_score(env) == 19
+    assert env.score.wildlife[Wildlife.BEAR] == 19
 
     env.place_wildlife((0, 8), Wildlife.BEAR)
     env.place_wildlife((1, 8), Wildlife.BEAR)
-    assert calculate_bear_score(env) == 27
+    assert env.score.wildlife[Wildlife.BEAR] == 27
 
     env.place_wildlife((0, 10), Wildlife.BEAR)
     env.place_wildlife((1, 10), Wildlife.BEAR)
-    assert calculate_bear_score(env) == 27
+    assert env.score.wildlife[Wildlife.BEAR] == 27
 
 
 def test_elk_score():
     env = make_env([((q, r), "MMe", 0) for q in range(10) for r in range(10)])
-    assert calculate_elk_score(env) == 0
+    assert env.score.wildlife[Wildlife.ELK] == 0
 
     env.place_wildlife((0, 0), Wildlife.ELK)
-    assert calculate_elk_score(env) == 2
+    assert env.score.wildlife[Wildlife.ELK] == 2
 
     env.place_wildlife((1, 0), Wildlife.ELK)
-    assert calculate_elk_score(env) == 5
+    assert env.score.wildlife[Wildlife.ELK] == 5
 
     env.place_wildlife((2, 0), Wildlife.ELK)
-    assert calculate_elk_score(env) == 9
+    assert env.score.wildlife[Wildlife.ELK] == 9
 
     env.place_wildlife((3, 0), Wildlife.ELK)
-    assert calculate_elk_score(env) == 13
+    assert env.score.wildlife[Wildlife.ELK] == 13
 
     env.place_wildlife((4, 0), Wildlife.ELK)
-    assert calculate_elk_score(env) == 13 + 2
+    assert env.score.wildlife[Wildlife.ELK] == 13 + 2
 
     env.place_wildlife((4, 1), Wildlife.ELK)
-    assert calculate_elk_score(env) == 13 + 5
+    assert env.score.wildlife[Wildlife.ELK] == 13 + 5
 
     env.place_wildlife((6, 6), Wildlife.ELK)
-    assert calculate_elk_score(env) == 13 + 5 + 2
+    assert env.score.wildlife[Wildlife.ELK] == 13 + 5 + 2
 
     env.place_wildlife((0, 1), Wildlife.ELK)
-    assert calculate_elk_score(env) == 13 + 5 + 2 + 2
+    assert env.score.wildlife[Wildlife.ELK] == 13 + 5 + 2 + 2
 
     env.place_wildlife((0, 2), Wildlife.ELK)
-    assert calculate_elk_score(env) == 13 + 9 + 2 + 2
+    assert env.score.wildlife[Wildlife.ELK] == 13 + 9 + 2 + 2
 
 
 def test_salmon_score():
     env = make_env([((q, r), "MMs", 0) for q in range(10) for r in range(10)])
-    assert calculate_salmon_score(env) == 0
+    assert env.score.wildlife[Wildlife.SALMON] == 0
 
     env.place_wildlife((0, 0), Wildlife.SALMON)
-    assert calculate_salmon_score(env) == 2
+    assert env.score.wildlife[Wildlife.SALMON] == 2
 
     env.place_wildlife((1, 0), Wildlife.SALMON)
-    assert calculate_salmon_score(env) == 5
+    assert env.score.wildlife[Wildlife.SALMON] == 5
 
     env.place_wildlife((1, 1), Wildlife.SALMON)
-    assert calculate_salmon_score(env) == 8
+    assert env.score.wildlife[Wildlife.SALMON] == 8
 
     env.place_wildlife((2, 0), Wildlife.SALMON)
-    assert calculate_salmon_score(env) == 0
+    assert env.score.wildlife[Wildlife.SALMON] == 0
 
     env.place_wildlife((4, 0), Wildlife.SALMON)
-    assert calculate_salmon_score(env) == 2
+    assert env.score.wildlife[Wildlife.SALMON] == 2
 
     env.place_wildlife((6, 0), Wildlife.SALMON)
-    assert calculate_salmon_score(env) == 2 + 2
+    assert env.score.wildlife[Wildlife.SALMON] == 2 + 2
 
     for i in range(1, 7):
         env.place_wildlife((6, i), Wildlife.SALMON)
-    assert calculate_salmon_score(env) == 2 + 25
+    assert env.score.wildlife[Wildlife.SALMON] == 2 + 25
 
     env.place_wildlife((6, 7), Wildlife.SALMON)
-    assert calculate_salmon_score(env) == 2 + 25
+    assert env.score.wildlife[Wildlife.SALMON] == 2 + 25
 
 
 def test_hawk_score():
     env = make_env([((q, r), "MMh", 0) for q in range(10) for r in range(10)])
-    assert calculate_hawk_score(env) == 0
+    assert env.score.wildlife[Wildlife.HAWK] == 0
 
     env.place_wildlife((0, 0), Wildlife.HAWK)
-    assert calculate_hawk_score(env) == 2
+    assert env.score.wildlife[Wildlife.HAWK] == 2
 
     env.place_wildlife((1, 0), Wildlife.HAWK)
-    assert calculate_hawk_score(env) == 0
+    assert env.score.wildlife[Wildlife.HAWK] == 0
 
     env.place_wildlife((0, 2), Wildlife.HAWK)
-    assert calculate_hawk_score(env) == 2
+    assert env.score.wildlife[Wildlife.HAWK] == 2
 
     env.place_wildlife((2, 2), Wildlife.HAWK)
-    assert calculate_hawk_score(env) == 5
+    assert env.score.wildlife[Wildlife.HAWK] == 5
 
     env.place_wildlife((2, 4), Wildlife.HAWK)
-    assert calculate_hawk_score(env) == 8
+    assert env.score.wildlife[Wildlife.HAWK] == 8
 
     env.place_wildlife((4, 4), Wildlife.HAWK)
     env.place_wildlife((4, 6), Wildlife.HAWK)
     env.place_wildlife((6, 6), Wildlife.HAWK)
-    assert calculate_hawk_score(env) == 18
+    assert env.score.wildlife[Wildlife.HAWK] == 18
 
     env.place_wildlife((6, 8), Wildlife.HAWK)
     env.place_wildlife((8, 8), Wildlife.HAWK)
-    assert calculate_hawk_score(env) == 26
+    assert env.score.wildlife[Wildlife.HAWK] == 26
 
     env.place_wildlife((0, 8), Wildlife.HAWK)
-    assert calculate_hawk_score(env) == 26
+    assert env.score.wildlife[Wildlife.HAWK] == 26
 
 
 def test_fox_scoring():
     env = make_env([((q, r), "MMbeshf", 0) for q in range(10) for r in range(10)])
-    assert calculate_fox_score(env) == 0
+    assert env.score.wildlife[Wildlife.FOX] == 0
 
     env.place_wildlife((5, 5), Wildlife.FOX)
-    assert calculate_fox_score(env) == 0
+    assert env.score.wildlife[Wildlife.FOX] == 0
 
     env.place_wildlife((6, 5), Wildlife.HAWK)
-    assert calculate_fox_score(env) == 1
+    assert env.score.wildlife[Wildlife.FOX] == 1
 
     env.place_wildlife((5, 6), Wildlife.HAWK)
-    assert calculate_fox_score(env) == 1
+    assert env.score.wildlife[Wildlife.FOX] == 1
 
     env.place_wildlife((4, 6), Wildlife.BEAR)
-    assert calculate_fox_score(env) == 2
+    assert env.score.wildlife[Wildlife.FOX] == 2
 
     env.place_wildlife((4, 5), Wildlife.SALMON)
-    assert calculate_fox_score(env) == 3
+    assert env.score.wildlife[Wildlife.FOX] == 3
 
     env.place_wildlife((5, 4), Wildlife.ELK)
-    assert calculate_fox_score(env) == 4
+    assert env.score.wildlife[Wildlife.FOX] == 4
 
     env.place_wildlife((6, 4), Wildlife.FOX)
-    assert calculate_fox_score(env) == 5 + 3
+    assert env.score.wildlife[Wildlife.FOX] == 5 + 3

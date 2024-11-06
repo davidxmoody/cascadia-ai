@@ -1,10 +1,13 @@
+from typing import cast
 import numpy as np
 from collections import Counter
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.game_state import Action, GameState
-from cascadia_ai.positions import HexPosition, adjacent_positions
+from cascadia_ai.positions import adjacent_positions
 from cascadia_ai.wildlife_layer import FoxLayer, WildlifeLayer
 
+
+non_fox_wildlife = [Wildlife.BEAR, Wildlife.ELK, Wildlife.SALMON, Wildlife.HAWK]
 
 features_shapes = [[13], [37, 11], [34, 5]]
 
@@ -13,24 +16,6 @@ def pad_list(data: list[list], length: int):
     while len(data) < length:
         data.append([0] * len(data[0]))
     return data
-
-
-def get_wreward(
-    wlayers: dict[Wildlife, WildlifeLayer | FoxLayer],
-    pos: HexPosition,
-    wildlife: Wildlife,
-):
-    reward = wlayers[wildlife].get_reward(pos, wildlife)
-
-    if reward is None:
-        return 0
-
-    if wildlife == Wildlife.FOX:
-        return reward or 0
-
-    fox_reward = wlayers[Wildlife.FOX].get_reward(pos, wildlife) or 0
-
-    return (reward or 0) + fox_reward
 
 
 def get_features(s: GameState, a: Action | None = None):
@@ -93,13 +78,17 @@ def get_features(s: GameState, a: Action | None = None):
             if apos not in s.env.tiles
         )
 
-    bsizes = Counter(len(g) for g in wlayers[Wildlife.BEAR]._groups)
+    fox_layer = cast(FoxLayer, s.env.wlayers[Wildlife.FOX])
+    bear_layer = cast(WildlifeLayer, s.env.wlayers[Wildlife.BEAR])
+
+    bsizes = Counter(len(g) for g in bear_layer._groups)
 
     global_features = [
         turns_remaining,
         nature_tokens,
         bsizes[2],
         bsizes[1],
+        # TODO try adding in scores here
         wlayers[Wildlife.ELK].count,
         wlayers[Wildlife.SALMON].count,
         wlayers[Wildlife.HAWK].count,
@@ -119,10 +108,15 @@ def get_features(s: GameState, a: Action | None = None):
                     (
                         0
                         if w not in tile.wildlife_slots
-                        # else sum(wlayers[w2].get_reward(pos, w) or 0 for w2 in Wildlife)
-                        else get_wreward(wlayers, pos, w)
+                        else (wlayers[w].get_reward(pos, w) or 0)
+                        + fox_layer.get_reward(pos, w)
                     )
-                    for w in Wildlife
+                    for w in non_fox_wildlife
+                ),
+                (
+                    0
+                    if Wildlife.FOX not in tile.wildlife_slots
+                    else fox_layer.get_reward(pos, Wildlife.FOX)
                 ),
             ]
         )
@@ -133,10 +127,10 @@ def get_features(s: GameState, a: Action | None = None):
                 0,
                 *(0 for _ in Wildlife),
                 *(
-                    # sum(wlayers[w2].get_reward(pos, w) or 0 for w2 in Wildlife)
-                    get_wreward(wlayers, pos, w)
-                    for w in Wildlife
+                    (wlayers[w].get_reward(pos, w) or 0) + fox_layer.get_reward(pos, w)
+                    for w in non_fox_wildlife
                 ),
+                fox_layer.get_reward(pos, Wildlife.FOX),
             ]
         )
 
