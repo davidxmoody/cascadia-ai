@@ -2,9 +2,9 @@ from copy import deepcopy
 from random import choice, sample
 from typing import NamedTuple
 from cascadia_ai.enums import Wildlife
-from cascadia_ai.environment import Environment, starting_tiles
+from cascadia_ai.environment import Environment
 from cascadia_ai.positions import HexPosition
-from cascadia_ai.tiles import Tile, tiles
+from cascadia_ai.tiles import Tile, tiles, starting_tiles
 
 
 class Action(NamedTuple):

@@ -21,36 +21,14 @@ def share_edge(
     return edge1 == edge2 and (habitat is None or edge1 == habitat)
 
 
-TileGrid = dict[HexPosition, Tile]
-WildlifeGrid = dict[HexPosition, Wildlife]
-
-
-starting_tile_defs: list[tuple[str, str, str]] = [
-    ("MMb", "FWhef", "RPsb"),
-    ("RRs", "PFseb", "MWfh"),
-    ("PPf", "WRshf", "FMbe"),
-    ("FFe", "MRheb", "WPfs"),
-    ("WWh", "RFseh", "PMbf"),
-]
-
-starting_tiles: list[TileGrid] = [
-    {
-        (20, 21): Tile.from_definition(a, 0),
-        (20, 20): Tile.from_definition(b, 1),
-        (21, 20): Tile.from_definition(c, 2),
-    }
-    for a, b, c in starting_tile_defs
-]
-
-
 class Environment:
     nature_tokens: int
-    tiles: TileGrid
-    wildlife: WildlifeGrid
+    tiles: dict[HexPosition, Tile]
+    wildlife: dict[HexPosition, Wildlife]
     hareas: dict[Habitat, HabitatAreas]
     wgroups: dict[Wildlife, WildlifeGroups]
 
-    def __init__(self, starting_tile_group: TileGrid):
+    def __init__(self, starting_tile_group: dict[HexPosition, Tile]):
         self.nature_tokens = 0
         self.tiles = dict(starting_tile_group)
         self.wildlife = {}

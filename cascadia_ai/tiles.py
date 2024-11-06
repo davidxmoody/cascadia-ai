@@ -1,5 +1,6 @@
 from typing import NamedTuple
 from cascadia_ai.enums import Habitat, Wildlife
+from cascadia_ai.positions import HexPosition
 
 
 class Tile(NamedTuple):
@@ -158,3 +159,20 @@ tile_defs = [
 ]
 
 tiles = [Tile.from_definition(td) for td in tile_defs]
+
+starting_tile_defs: list[tuple[str, str, str]] = [
+    ("MMb", "FWhef", "RPsb"),
+    ("RRs", "PFseb", "MWfh"),
+    ("PPf", "WRshf", "FMbe"),
+    ("FFe", "MRheb", "WPfs"),
+    ("WWh", "RFseh", "PMbf"),
+]
+
+starting_tiles: list[dict[HexPosition, Tile]] = [
+    {
+        (20, 21): Tile.from_definition(a, 0),
+        (20, 20): Tile.from_definition(b, 1),
+        (21, 20): Tile.from_definition(c, 2),
+    }
+    for a, b, c in starting_tile_defs
+]
