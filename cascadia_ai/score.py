@@ -1,8 +1,7 @@
 from collections.abc import Set
 from typing import Generator, NamedTuple
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environment import Environment
-from cascadia_ai.game_state import GameState
+# from cascadia_ai.environment import Environment
 from cascadia_ai.positions import HexPosition, adjacent_positions
 
 
@@ -20,23 +19,24 @@ scoring_salmon_run = ScoreTable([0, 2, 5, 8, 12, 16, 20, 25])
 scoring_hawk_singles = ScoreTable([0, 2, 5, 8, 11, 14, 18, 22, 26])
 
 
-def calculate_habitat_scores(env: Environment):
-    largest_group_sizes = {
-        h: len(state[0] if len(state) else [])
-        for h, state in env.habitat_groups().items()
-    }
-    return {h: v + 2 if v >= 7 else v for h, v in largest_group_sizes.items()}
+# def calculate_habitat_scores(env: Environment):
+#     largest_group_sizes = {
+#         h: len(state[0] if len(state) else [])
+#         for h, state in env.habitat_groups().items()
+#     }
+#     return {h: v + 2 if v >= 7 else v for h, v in largest_group_sizes.items()}
 
 
-def calculate_bear_score(env: Environment):
-    groups = env.wildlife_groups(Wildlife.BEAR)
-    num_valid_groups = sum(len(g) == 2 for g in groups)
-    return scoring_bear_pairs[num_valid_groups]
+# def calculate_bear_score(env: Environment):
+#     groups = env.wildlife_groups(Wildlife.BEAR)
+#     num_valid_groups = sum(len(g) == 2 for g in groups)
+#     return scoring_bear_pairs[num_valid_groups]
 
 
 hex_steps: list[tuple[int, int]] = [(0, 1), (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1)]
 
 
+# TODO try caching this globally
 def iter_elk_line_options(
     group: Set[HexPosition], acc: list[int] = []
 ) -> Generator[list[int], None, None]:
@@ -72,10 +72,10 @@ def get_max_elk_group_score(group: Set[HexPosition]):
     )
 
 
-def calculate_elk_score(env: Environment):
-    return sum(
-        get_max_elk_group_score(group) for group in env.wildlife_groups(Wildlife.ELK)
-    )
+# def calculate_elk_score(env: Environment):
+#     return sum(
+#         get_max_elk_group_score(group) for group in env.wildlife_groups(Wildlife.ELK)
+#     )
 
 
 def is_valid_salmon_run(group: set[HexPosition]):
@@ -89,35 +89,35 @@ def is_valid_salmon_run(group: set[HexPosition]):
     return True
 
 
-def calculate_salmon_score(env: Environment):
-    return sum(
-        scoring_salmon_run[len(group)]
-        for group in env.wildlife_groups(Wildlife.SALMON)
-        if is_valid_salmon_run(group)
-    )
+# def calculate_salmon_score(env: Environment):
+#     return sum(
+#         scoring_salmon_run[len(group)]
+#         for group in env.wildlife_groups(Wildlife.SALMON)
+#         if is_valid_salmon_run(group)
+#     )
 
 
-def calculate_hawk_score(env: Environment):
-    num_valid_groups = sum(len(g) == 1 for g in env.wildlife_groups(Wildlife.HAWK))
-    return scoring_hawk_singles[num_valid_groups]
+# def calculate_hawk_score(env: Environment):
+#     num_valid_groups = sum(len(g) == 1 for g in env.wildlife_groups(Wildlife.HAWK))
+#     return scoring_hawk_singles[num_valid_groups]
 
 
-def calculate_fox_score(env: Environment):
-    return sum(
-        len(env.adjacent_wildlife_counts(pos))
-        for pos, w in env.wildlife.items()
-        if w == Wildlife.FOX
-    )
+# def calculate_fox_score(env: Environment):
+#     return sum(
+#         len(env.adjacent_wildlife_counts(pos))
+#         for pos, w in env.wildlife.items()
+#         if w == Wildlife.FOX
+#     )
 
 
-def calculate_wildlife_score(env: Environment):
-    return {
-        Wildlife.BEAR: calculate_bear_score(env),
-        Wildlife.ELK: calculate_elk_score(env),
-        Wildlife.SALMON: calculate_salmon_score(env),
-        Wildlife.HAWK: calculate_hawk_score(env),
-        Wildlife.FOX: calculate_fox_score(env),
-    }
+# def calculate_wildlife_score(env: Environment):
+#     return {
+#         Wildlife.BEAR: calculate_bear_score(env),
+#         Wildlife.ELK: calculate_elk_score(env),
+#         Wildlife.SALMON: calculate_salmon_score(env),
+#         Wildlife.HAWK: calculate_hawk_score(env),
+#         Wildlife.FOX: calculate_fox_score(env),
+#     }
 
 
 class Score(NamedTuple):
@@ -142,15 +142,3 @@ class Score(NamedTuple):
                 f"total:{self.total:>3}",
             ]
         )
-
-
-def calculate_score(state: GameState):
-    wildlife = calculate_wildlife_score(state.env)
-
-    habitat = calculate_habitat_scores(state.env)
-
-    return Score(
-        wildlife=wildlife,
-        habitat=habitat,
-        nature_tokens=state.env.nature_tokens,
-    )

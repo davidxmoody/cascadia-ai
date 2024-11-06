@@ -1,53 +1,110 @@
 from copy import copy
 from typing import Self
-from cascadia_ai.ai.actions import (
-    calculate_bear_reward,
-    calculate_elk_reward,
-    calculate_hawk_reward,
-    calculate_salmon_reward,
-)
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.positions import HexPosition, adjacent_positions
-
-GroupLabel = int
+from cascadia_ai.score import (
+    get_max_elk_group_score,
+    is_valid_salmon_run,
+    scoring_bear_pairs,
+    scoring_salmon_run,
+    scoring_hawk_singles,
+)
 
 
 class WildlifeLayer:
-    wildlife: Wildlife
+    score: int
     count: int
-    groups: list[frozenset[HexPosition]]
+    _wildlife: Wildlife
+    _groups: list[frozenset[HexPosition]]
+    _reward_cache: dict[HexPosition, int | None]
     _child_cache: dict[HexPosition, Self]
 
-    def __init__(
-        self, wildlife: Wildlife, wgrid: dict[HexPosition, Wildlife] | None = None
-    ):
-        self.wildlife = wildlife
+    def __init__(self, wildlife: Wildlife):
+        self.score = 0
         self.count = 0
-        self.groups = []
+        self._wildlife = wildlife
+        self._groups = []
+        self._reward_cache = {}
         self._child_cache = {}
 
-        if wgrid is not None:
-            for pos, w in wgrid.items():
-                if w == wildlife:
-                    self._place_wildlife(pos)
+    def get_reward(self, pos: HexPosition, wildlife: Wildlife):
+        if wildlife != self._wildlife:
+            return 0
 
-    def get_reward(self, pos: HexPosition):
-        match self.wildlife:
+        if pos in self._reward_cache:
+            return self._reward_cache[pos]
+
+        match self._wildlife:
             case Wildlife.BEAR:
-                return calculate_bear_reward(self.groups, pos) or 0
+                connected_groups = self._get_connected_groups(pos)
+
+                if len(connected_groups) == 0:
+                    reward = 0
+
+                elif len(connected_groups) == 1 and len(connected_groups[0]) == 1:
+                    num_bear_pairs_before = sum(len(g) == 2 for g in self._groups)
+
+                    reward = (
+                        scoring_bear_pairs[num_bear_pairs_before + 1]
+                        - scoring_bear_pairs[num_bear_pairs_before]
+                    )
+
+                else:
+                    reward = None
 
             case Wildlife.ELK:
-                return calculate_elk_reward(self.groups, pos) or 0
+                connected_groups = self._get_connected_groups(pos)
+
+                partial_score_before = sum(
+                    get_max_elk_group_score(group) for group in connected_groups
+                )
+
+                partial_score_after = get_max_elk_group_score(
+                    set.union({pos}, *connected_groups)
+                )
+
+                reward = partial_score_after - partial_score_before
 
             case Wildlife.SALMON:
-                return calculate_salmon_reward(self.groups, pos) or 0
+                connected_groups = self._get_connected_groups(pos)
+
+                new_group = set.union({pos}, *connected_groups)
+
+                if not is_valid_salmon_run(new_group):
+                    reward = None
+
+                else:
+                    partial_score_before = sum(
+                        scoring_salmon_run[len(group)] for group in connected_groups
+                    )
+
+                    partial_score_after = scoring_salmon_run[len(new_group)]
+
+                    reward = partial_score_after - partial_score_before
 
             case Wildlife.HAWK:
-                return calculate_hawk_reward(self.groups, pos) or 0
+                connected_groups = self._get_connected_groups(pos)
+
+                if len(connected_groups):
+                    reward = None
+
+                else:
+                    num_singles_before = sum(len(g) == 1 for g in self._groups)
+
+                    reward = (
+                        scoring_hawk_singles[num_singles_before + 1]
+                        - scoring_hawk_singles[num_singles_before]
+                    )
 
             case Wildlife.FOX:
-                return 0
-                # raise Exception("Fox reward not supported")
+                raise Exception("Fox reward not supported")
+
+        self._reward_cache[pos] = reward
+        return reward
+
+    def _get_connected_groups(self, pos: HexPosition):
+        adjacent_pos = adjacent_positions(pos)
+        return [group for group in self._groups if not group.isdisjoint(adjacent_pos)]
 
     def _place_wildlife(self, pos: HexPosition):
         self.count += 1
@@ -57,30 +114,98 @@ class WildlifeLayer:
         new_groups: list[frozenset[HexPosition]] = []
         new_group = {pos}
 
-        for group in self.groups:
+        for group in self._groups:
             if group.isdisjoint(adjacent_pos):
                 new_groups.append(group)
             else:
                 new_group.update(group)
 
         new_groups.append(frozenset(new_group))
-        new_groups.sort(key=len, reverse=True)
+        # TODO is this necessary?
+        # new_groups.sort(key=len, reverse=True)
 
-        self.groups = new_groups
+        self._groups = new_groups
 
     def place_wildlife(self, pos: HexPosition, wildlife: Wildlife):
-        if wildlife != self.wildlife:
+        if wildlife != self._wildlife:
             return self
 
         if pos not in self._child_cache:
+            reward = self.get_reward(pos, wildlife)
+            if reward is None:
+                raise Exception("Attempted to place wildlife with None reward")
             new_obj = self.copy()
             new_obj._place_wildlife(pos)
+            new_obj.score += reward
             self._child_cache[pos] = new_obj
 
         return self._child_cache[pos]
 
     def copy(self):
         new_obj = copy(self)
-        new_obj.groups = list(new_obj.groups)
+        new_obj._groups = list(new_obj._groups)
+        new_obj._reward_cache = {}
+        new_obj._child_cache = {}
+        return new_obj
+
+
+class FoxLayer:
+    score: int
+    count: int
+    _wgrid: dict[HexPosition, Wildlife]
+    _reward_cache: dict[tuple[HexPosition, Wildlife], int]
+    _child_cache: dict[tuple[HexPosition, Wildlife], Self]
+
+    def __init__(self):
+        self.score = 0
+        self.count = 0
+        self._wgrid = {}
+        self._reward_cache = {}
+        self._child_cache = {}
+
+    def get_reward(self, pos: HexPosition, wildlife: Wildlife):
+        key = (pos, wildlife)
+        if key in self._reward_cache:
+            return self._reward_cache[key]
+
+        reward = 0
+
+        adjacent_pos = adjacent_positions(pos)
+
+        if wildlife == Wildlife.FOX:
+            reward += len(
+                set(self._wgrid[apos] for apos in adjacent_pos if apos in self._wgrid)
+            )
+
+        for apos in adjacent_pos:
+            if self._wgrid.get(apos) == Wildlife.FOX:
+                if not any(
+                    self._wgrid.get(apos2) == wildlife
+                    for apos2 in adjacent_positions(apos)
+                ):
+                    reward += 1
+
+        self._reward_cache[key] = reward
+        return reward
+
+    def _place_wildlife(self, pos: HexPosition, wildlife: Wildlife):
+        if wildlife == Wildlife.FOX:
+            self.count += 1
+        self._wgrid[pos] = wildlife
+
+    def place_wildlife(self, pos: HexPosition, wildlife: Wildlife):
+        key = (pos, wildlife)
+        if key not in self._child_cache:
+            reward = self.get_reward(pos, wildlife)
+            new_obj = self.copy()
+            new_obj._place_wildlife(pos, wildlife)
+            new_obj.score += reward
+            self._child_cache[key] = new_obj
+        return self._child_cache[key]
+
+    def copy(self):
+        new_obj = copy(self)
+        new_obj._wgrid = dict(new_obj._wgrid)
+        new_obj._reward_cache = {}
         new_obj._child_cache = {}
         return new_obj

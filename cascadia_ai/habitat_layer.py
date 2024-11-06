@@ -65,10 +65,12 @@ class HabitatLayer:
 
     def _get_edges_reward(self, edge_keys: Iterable[EdgeKey]):
         # TODO consider caching this too if necessary
+        connected_area_labels = {
+            self._edges[edge_key] for edge_key in edge_keys if edge_key in self._edges
+        }
         new_area = 1
-        for edge_key in edge_keys:
-            if edge_key in self._edges:
-                new_area += self._areas[self._edges[edge_key]]
+        for label in connected_area_labels:
+            new_area += self._areas[label]
 
         reward = 0
         if new_area > self.largest_area:

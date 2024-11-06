@@ -2,7 +2,8 @@ from collections import Counter
 from copy import deepcopy
 from cascadia_ai.habitat_layer import HabitatLayer
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.wildlife_layer import WildlifeLayer
+from cascadia_ai.score import Score
+from cascadia_ai.wildlife_layer import FoxLayer, WildlifeLayer
 from cascadia_ai.positions import HexPosition, adjacent_positions
 from cascadia_ai.tiles import Tile
 
@@ -26,22 +27,24 @@ class Environment:
     tiles: dict[HexPosition, Tile]
     wildlife: dict[HexPosition, Wildlife]
     hlayers: dict[Habitat, HabitatLayer]
-    wlayers: dict[Wildlife, WildlifeLayer]
+    wlayers: dict[Wildlife, WildlifeLayer | FoxLayer]
 
     def __init__(self, starting_tile_group: dict[HexPosition, Tile]):
         self.nature_tokens = 0
         self.tiles = dict(starting_tile_group)
         self.wildlife = {}
         self.hlayers = {h: HabitatLayer(h, self.tiles) for h in Habitat}
-        self.wlayers = {w: WildlifeLayer(w) for w in Wildlife}
+        self.wlayers = {
+            w: FoxLayer() if w == Wildlife.FOX else WildlifeLayer(w) for w in Wildlife
+        }
 
-    # @property
-    # def score(self):
-    #     return Score(
-    #         {w: wlayer.score for w, wlayer in self.wlayers.items()},
-    #         calculate_habitat_scores(env),
-    #         self.nature_tokens,
-    #     )
+    @property
+    def score(self):
+        return Score(
+            {w: wlayer.score for w, wlayer in self.wlayers.items()},
+            {h: hlayer.score for h, hlayer in self.hlayers.items()},
+            self.nature_tokens,
+        )
 
     def adjacent_tiles(self, pos: HexPosition):
         return (

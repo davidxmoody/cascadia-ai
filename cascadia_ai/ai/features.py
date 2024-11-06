@@ -1,10 +1,9 @@
 import numpy as np
-from collections import Counter, defaultdict
+from collections import Counter
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.game_state import Action, GameState
-from cascadia_ai.positions import adjacent_positions
-
-Cache = defaultdict[str, dict]
+from cascadia_ai.positions import HexPosition, adjacent_positions
+from cascadia_ai.wildlife_layer import FoxLayer, WildlifeLayer
 
 
 features_shapes = [[13], [37, 11], [34, 5]]
@@ -16,7 +15,25 @@ def pad_list(data: list[list], length: int):
     return data
 
 
-def get_features(s: GameState, a: Action | None = None, cache: Cache | None = None):
+def get_wreward(
+    wlayers: dict[Wildlife, WildlifeLayer | FoxLayer],
+    pos: HexPosition,
+    wildlife: Wildlife,
+):
+    reward = wlayers[wildlife].get_reward(pos, wildlife)
+
+    if reward is None:
+        return 0
+
+    if wildlife == Wildlife.FOX:
+        return reward or 0
+
+    fox_reward = wlayers[Wildlife.FOX].get_reward(pos, wildlife) or 0
+
+    return (reward or 0) + fox_reward
+
+
+def get_features(s: GameState, a: Action | None = None):
     if a is None:
         turns_remaining = s.turns_remaining
         nature_tokens = s.env.nature_tokens
@@ -53,10 +70,10 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
             s.env.wlayers
             if a.wildlife_position is None
             else {
-                w: groups.place_wildlife(
+                w: layer.place_wildlife(
                     a.wildlife_position, s.wildlife_display[a.wildlife_index]
                 )
-                for w, groups in s.env.wlayers.items()
+                for w, layer in s.env.wlayers.items()
             }
         )
 
@@ -76,7 +93,7 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
             if apos not in s.env.tiles
         )
 
-    bsizes = Counter(len(g) for g in wlayers[Wildlife.BEAR].groups)
+    bsizes = Counter(len(g) for g in wlayers[Wildlife.BEAR]._groups)
 
     global_features = [
         turns_remaining,
@@ -99,7 +116,12 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
                 int(tile.nature_token_reward),
                 *(int(w in tile.wildlife_slots) for w in Wildlife),
                 *(
-                    (0 if w not in tile.wildlife_slots else wlayers[w].get_reward(pos))
+                    (
+                        0
+                        if w not in tile.wildlife_slots
+                        # else sum(wlayers[w2].get_reward(pos, w) or 0 for w2 in Wildlife)
+                        else get_wreward(wlayers, pos, w)
+                    )
                     for w in Wildlife
                 ),
             ]
@@ -110,7 +132,11 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
             [
                 0,
                 *(0 for _ in Wildlife),
-                *(wlayers[w].get_reward(pos) for w in Wildlife),
+                *(
+                    # sum(wlayers[w2].get_reward(pos, w) or 0 for w2 in Wildlife)
+                    get_wreward(wlayers, pos, w)
+                    for w in Wildlife
+                ),
             ]
         )
 
@@ -123,8 +149,8 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
     )
 
 
-def get_next_features(s: GameState, actions: list[Action], cache: Cache | None = None):
-    features_list = [get_features(s, a, cache) for a in actions]
+def get_next_features(s: GameState, actions: list[Action]):
+    features_list = [get_features(s, a) for a in actions]
     return [
         np.stack([f[i] for f in features_list]) for i in range(len(features_list[0]))
     ]

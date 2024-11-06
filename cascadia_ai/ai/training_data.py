@@ -4,7 +4,7 @@ from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions_and_rewards
 from cascadia_ai.enums import Wildlife
 from cascadia_ai.game_state import Action, GameState
-from cascadia_ai.score import Score, calculate_score
+from cascadia_ai.score import Score
 
 
 # %%
@@ -83,7 +83,7 @@ def get_greedy_played_games(load=True) -> list[tuple[GameState, list[Score]]]:
     realistic_states = get_realistic_states(load)
     greedy_played_games = []
     for state in tqdm(realistic_states, desc="Greedy playing games"):
-        scores = [calculate_score(play_game_greedy(state.copy())) for _ in range(5)]
+        scores = [play_game_greedy(state.copy()).env.score for _ in range(5)]
         greedy_played_games.append((state, scores))
 
     with open("data/greedy_played_games.pkl", "wb") as f:

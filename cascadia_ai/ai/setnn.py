@@ -9,10 +9,10 @@ from cascadia_ai.ai.actions import get_actions_and_rewards
 from cascadia_ai.ai.features import get_features, features_shapes
 from cascadia_ai.ai.training_data import get_greedy_played_games
 from cascadia_ai.game_state import GameState
-from cascadia_ai.score import calculate_score
 import numpy as np
 import pandas as pd
 from statistics import mean
+from cascadia_ai.tui import print_state
 
 
 # %%
@@ -32,7 +32,7 @@ features_tensors = [
 
 labels = torch.tensor(
     [
-        mean(score.total for score in scores) - calculate_score(state).total
+        mean(score.total for score in scores) - state.env.score.total
         for state, scores in tqdm(greedy_played_games, desc="Calculating labels")
     ]
 )
@@ -173,7 +173,8 @@ def play_test_game(
 results = []
 for _ in tqdm(range(100), desc="Playing test games"):
     end_state = play_test_game(model)
-    score = calculate_score(end_state)
+    score = end_state.env.score
+    print_state(end_state)
     print(score)
     results.append(
         {

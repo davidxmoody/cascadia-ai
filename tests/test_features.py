@@ -1,33 +1,28 @@
-import pickle
 import cProfile
 import pstats
 from typing import Any
 from cascadia_ai.ai.actions import get_actions_and_rewards
-from cascadia_ai.habitat_layer import HabitatLayer
-from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.game_state import GameState
 from cascadia_ai.ai.features import get_next_features
-from cascadia_ai.wildlife_layer import WildlifeLayer
+from cascadia_ai.tui import print_state
 
 
 def test_features():
-    with open("data/test_state.pkl", "rb") as f:
-        test_state: GameState = pickle.load(f)
-        # TODO fix this
-        test_state.env.hlayers = {
-            h: HabitatLayer(h, test_state.env.tiles) for h in Habitat
-        }
-        test_state.env.wlayers = {
-            w: WildlifeLayer(w, test_state.env.wildlife) for w in Wildlife
-        }
+    state = GameState()
+
+    while state.turns_remaining > 5:
+        actions, rewards = get_actions_and_rewards(state)
+        action = actions[rewards.index(max(rewards))]
+        state.take_action(action)
+
+    print_state(state)
+
+    actions, rewards = get_actions_and_rewards(state)
 
     profiler = cProfile.Profile()
-
-    actions, _ = get_actions_and_rewards(test_state)
-
     profiler.enable()
 
-    get_next_features(test_state, actions)
+    get_next_features(state, actions)
 
     profiler.disable()
 

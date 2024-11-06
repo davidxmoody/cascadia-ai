@@ -2,7 +2,6 @@ from rich.console import Console
 from rich.theme import Theme
 from cascadia_ai.game_state import GameState
 from cascadia_ai.environment import Environment
-from cascadia_ai.score import calculate_score
 
 color_template = [
     r"    0    ",
@@ -106,8 +105,6 @@ def print_env(env: Environment):
 
 
 def print_state(state: GameState):
-    score = calculate_score(state)
-
     print(f"Turns remaining: {state.turns_remaining}")
     print()
 
@@ -118,5 +115,5 @@ def print_state(state: GameState):
     print_env(state.env)
     print()
 
-    print(score)
+    print(state.env.score)
     print()
