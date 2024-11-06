@@ -1,7 +1,7 @@
 from rich.console import Console
 from rich.theme import Theme
 from cascadia_ai.game_state import GameState
-from cascadia_ai.environments import Environment
+from cascadia_ai.environment import Environment
 from cascadia_ai.score import calculate_score
 
 color_template = [

@@ -1,7 +1,7 @@
 from collections.abc import Set
 from typing import Generator, NamedTuple
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import Environment
+from cascadia_ai.environment import Environment
 from cascadia_ai.game_state import GameState
 from cascadia_ai.positions import HexPosition, adjacent_positions
 

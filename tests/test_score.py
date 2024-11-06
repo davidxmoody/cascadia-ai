@@ -1,5 +1,5 @@
 from cascadia_ai.enums import Habitat, Wildlife
-from cascadia_ai.environments import Environment
+from cascadia_ai.environment import Environment
 from cascadia_ai.score import (
     calculate_habitat_scores,
     calculate_bear_score,
