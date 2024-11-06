@@ -85,7 +85,7 @@ def tile_options(state: GameState):
 def windex_options(state: GameState, tindex: int):
     yield (tindex, 0)
 
-    if state.nature_tokens > 0:
+    if state.env.nature_tokens > 0:
         considered_wildlife = {state.wildlife_display[tindex]}
 
         for i in range(4):

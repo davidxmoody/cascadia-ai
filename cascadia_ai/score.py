@@ -145,6 +145,6 @@ def calculate_score(state: GameState):
     return Score(
         wildlife=wildlife,
         habitat=habitat,
-        nature_tokens=state.nature_tokens,
-        total=sum(wildlife.values()) + sum(habitat.values()) + state.nature_tokens,
+        nature_tokens=state.env.nature_tokens,
+        total=sum(wildlife.values()) + sum(habitat.values()) + state.env.nature_tokens,
     )

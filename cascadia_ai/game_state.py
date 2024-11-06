@@ -27,7 +27,6 @@ class GameState:
     wildlife_display: list[Wildlife]
 
     env: Environment
-    nature_tokens: int = 0
 
     def __init__(self):
         self.env = Environment(choice(starting_tiles))
@@ -84,7 +83,7 @@ class GameState:
         if action.wildlife_index not in range(4):
             raise Exception("Wildlife index out of bounds")
 
-        if action.tile_index != action.wildlife_index and self.nature_tokens <= 0:
+        if action.tile_index != action.wildlife_index and self.env.nature_tokens <= 0:
             raise Exception("Cannot use mismatched pair without nature tokens")
 
         if not self.env.can_place_tile(action.tile_position):
@@ -105,7 +104,7 @@ class GameState:
         self.validate_action(action)
 
         if action.tile_index != action.wildlife_index:
-            self.nature_tokens -= 1
+            self.env.nature_tokens -= 1
 
         tile = self.tile_display.pop(action.tile_index)
         wildlife = self.wildlife_display.pop(action.wildlife_index)
@@ -116,7 +115,7 @@ class GameState:
             self.env.place_wildlife(action.wildlife_position, wildlife)
 
             if self.env.tiles[action.wildlife_position].nature_token_reward:
-                self.nature_tokens += 1
+                self.env.nature_tokens += 1
 
         self.tile_display.pop(0)
         self.tile_display.extend(self._draw_tiles(2))
@@ -125,5 +124,3 @@ class GameState:
         self.wildlife_display.extend(self._draw_wildlife(2))
 
         self._check_overpopulation()
-
-        return self

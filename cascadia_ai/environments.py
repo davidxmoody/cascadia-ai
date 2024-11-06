@@ -44,12 +44,14 @@ starting_tiles: list[TileGrid] = [
 
 
 class Environment:
+    nature_tokens: int
     tiles: TileGrid
     wildlife: WildlifeGrid
     hareas: dict[Habitat, HabitatAreas]
     wgroups: dict[Wildlife, WildlifeGroups]
 
     def __init__(self, starting_tile_group: TileGrid):
+        self.nature_tokens = 0
         self.tiles = dict(starting_tile_group)
         self.wildlife = {}
         self.hareas = {h: HabitatAreas(h, self.tiles) for h in Habitat}

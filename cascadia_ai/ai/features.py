@@ -19,7 +19,7 @@ def pad_list(data: list[list], length: int):
 def get_features(s: GameState, a: Action | None = None, cache: Cache | None = None):
     if a is None:
         turns_remaining = s.turns_remaining
-        nature_tokens = s.nature_tokens
+        nature_tokens = s.env.nature_tokens
         hareas = s.env.hareas
         wgroups = s.env.wgroups
         unoccupied_tiles = set(s.env.unoccupied_tiles())
@@ -38,7 +38,7 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
 
         turns_remaining = s.turns_remaining - 1
 
-        nature_tokens = s.nature_tokens
+        nature_tokens = s.env.nature_tokens
         if a.nt_spent:
             nature_tokens -= 1
         if wildlife_target is not None and wildlife_target.nature_token_reward:
