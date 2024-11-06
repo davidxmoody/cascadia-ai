@@ -4,17 +4,21 @@ import pstats
 from typing import Any
 from cascadia_ai.ai.actions import get_actions_and_rewards
 from cascadia_ai.areas import HabitatAreas
-from cascadia_ai.enums import Habitat
+from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.game_state import GameState
 from cascadia_ai.ai.features import get_next_features
+from cascadia_ai.groups import WildlifeGroups
 
 
 def test_features():
     with open("data/test_state.pkl", "rb") as f:
         test_state: GameState = pickle.load(f)
         # TODO fix this
-        test_state.env.areas = {
+        test_state.env.hareas = {
             h: HabitatAreas(h, test_state.env.tiles) for h in Habitat
+        }
+        test_state.env.wgroups = {
+            w: WildlifeGroups(w, test_state.env.wildlife) for w in Wildlife
         }
 
     profiler = cProfile.Profile()

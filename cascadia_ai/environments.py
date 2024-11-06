@@ -2,6 +2,7 @@ from collections import Counter
 from copy import deepcopy
 from cascadia_ai.areas import HabitatAreas
 from cascadia_ai.enums import Habitat, Wildlife
+from cascadia_ai.groups import WildlifeGroups
 from cascadia_ai.positions import HexPosition, adjacent_positions
 from cascadia_ai.tiles import Tile
 
@@ -45,12 +46,14 @@ starting_tiles: list[TileGrid] = [
 class Environment:
     tiles: TileGrid
     wildlife: WildlifeGrid
-    areas: dict[Habitat, HabitatAreas]
+    hareas: dict[Habitat, HabitatAreas]
+    wgroups: dict[Wildlife, WildlifeGroups]
 
     def __init__(self, starting_tile_group: TileGrid):
         self.tiles = dict(starting_tile_group)
         self.wildlife = {}
-        self.areas = {h: HabitatAreas(h, self.tiles) for h in Habitat}
+        self.hareas = {h: HabitatAreas(h, self.tiles) for h in Habitat}
+        self.wgroups = {w: WildlifeGroups(w) for w in Wildlife}
 
     def adjacent_tiles(self, pos: HexPosition):
         return (
@@ -158,12 +161,14 @@ class Environment:
             raise ValueError("Cannot place tile there")
         self.tiles[pos] = tile
         for h in Habitat:
-            self.areas[h].place_tile(pos, tile)
+            self.hareas[h] = self.hareas[h].place_tile(pos, tile)
 
     def place_wildlife(self, pos: HexPosition, wildlife: Wildlife):
         if not self.can_place_wildlife(pos, wildlife):
             raise ValueError("Cannot place wildlife there")
         self.wildlife[pos] = wildlife
+        for w in Wildlife:
+            self.wgroups[w] = self.wgroups[w].place_wildlife(pos, wildlife)
 
     def copy(self):
         return deepcopy(self)

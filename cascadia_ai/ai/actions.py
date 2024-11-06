@@ -1,3 +1,4 @@
+from typing import Mapping
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import Environment, share_edge
 from cascadia_ai.game_state import Action, GameState
@@ -11,9 +12,11 @@ from cascadia_ai.score import (
     is_valid_salmon_run,
 )
 
+PosGroups = list[set[HexPosition]] | list[frozenset[HexPosition]]
 
-def find_connected_groups(groups: list[set[HexPosition]], pos: HexPosition):
-    adjacent = set(adjacent_positions(pos))
+
+def find_connected_groups(groups: PosGroups, pos: HexPosition):
+    adjacent = adjacent_positions(pos)
     return [g for g in groups if not g.isdisjoint(adjacent)]
 
 
@@ -21,7 +24,7 @@ def pick_best_rotations(
     state: GameState,
     tile: Tile,
     pos: HexPosition,
-    hgroups: dict[Habitat, list[set[HexPosition]]],
+    hgroups: Mapping[Habitat, PosGroups],
 ):
     trotations = list(range(1 if tile.single_habitat else 6))
     trewards = [
@@ -37,7 +40,7 @@ def pick_best_rotations(
 
 def calculate_treward(
     state: GameState,
-    hgroups: dict[Habitat, list[set[HexPosition]]],
+    hgroups: Mapping[Habitat, PosGroups],
     tile: Tile,
     pos: HexPosition,
     rotation: int,
@@ -103,7 +106,7 @@ def wpos_options(state: GameState, tindex: int, tpos: HexPosition, windex: int):
             yield (pos, int(tile.nature_token_reward))
 
 
-def calculate_bear_reward(groups: list[set[HexPosition]], pos: HexPosition):
+def calculate_bear_reward(groups: PosGroups, pos: HexPosition):
     connected_groups = find_connected_groups(groups, pos)
 
     if len(connected_groups) == 0:
@@ -120,7 +123,7 @@ def calculate_bear_reward(groups: list[set[HexPosition]], pos: HexPosition):
     return None
 
 
-def calculate_elk_reward(groups: list[set[HexPosition]], pos: HexPosition):
+def calculate_elk_reward(groups: PosGroups, pos: HexPosition):
     connected_groups = find_connected_groups(groups, pos)
 
     partial_score_before = sum(
@@ -132,7 +135,7 @@ def calculate_elk_reward(groups: list[set[HexPosition]], pos: HexPosition):
     return partial_score_after - partial_score_before
 
 
-def calculate_salmon_reward(groups: list[set[HexPosition]], pos: HexPosition):
+def calculate_salmon_reward(groups: PosGroups, pos: HexPosition):
     connected_groups = find_connected_groups(groups, pos)
 
     new_group = set.union({pos}, *connected_groups)
@@ -149,7 +152,7 @@ def calculate_salmon_reward(groups: list[set[HexPosition]], pos: HexPosition):
     return partial_score_after - partial_score_before
 
 
-def calculate_hawk_reward(groups: list[set[HexPosition]], pos: HexPosition):
+def calculate_hawk_reward(groups: PosGroups, pos: HexPosition):
     connected_groups = find_connected_groups(groups, pos)
 
     if len(connected_groups):

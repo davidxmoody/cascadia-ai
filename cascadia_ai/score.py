@@ -1,3 +1,4 @@
+from collections.abc import Set
 from typing import Generator, NamedTuple
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.environments import Environment
@@ -37,7 +38,7 @@ hex_steps: list[tuple[int, int]] = [(0, 1), (1, 0), (1, -1), (0, -1), (-1, 0), (
 
 
 def iter_elk_line_options(
-    group: set[HexPosition], acc: list[int] = []
+    group: Set[HexPosition], acc: list[int] = []
 ) -> Generator[list[int], None, None]:
     if len(group) == 0:
         yield acc
@@ -64,7 +65,7 @@ def iter_elk_line_options(
             yield from iter_elk_line_options(group - line, acc + [len(line)])
 
 
-def get_max_elk_group_score(group: set[HexPosition]):
+def get_max_elk_group_score(group: Set[HexPosition]):
     return max(
         sum(scoring_elk_line[line] for line in lines)
         for lines in iter_elk_line_options(group)

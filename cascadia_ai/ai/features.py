@@ -1,6 +1,5 @@
 import numpy as np
 from collections import Counter, defaultdict
-from cascadia_ai.ai.actions import calculate_wreward
 from cascadia_ai.enums import Habitat, Wildlife
 from cascadia_ai.game_state import Action, GameState
 from cascadia_ai.positions import adjacent_positions
@@ -21,19 +20,16 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
     if a is None:
         turns_remaining = s.turns_remaining
         nature_tokens = s.nature_tokens
-        bsizes = Counter(len(g) for g in s.env.wildlife_groups(Wildlife.BEAR))
-        wcounter = Counter(s.env.wildlife.values())
-        areas = s.env.areas
+        hareas = s.env.hareas
+        wgroups = s.env.wgroups
         unoccupied_tiles = set(s.env.unoccupied_tiles())
         adjacent_empty = s.env.all_adjacent_empty()
 
     else:
         placed_tile = s.tile_display[a.tile_index].rotate(a.tile_rotation)
         if a.wildlife_position is None:
-            placed_wildlife = None
             wildlife_target = None
         else:
-            placed_wildlife = s.wildlife_display[a.wildlife_index]
             wildlife_target = (
                 placed_tile
                 if a.wildlife_position == a.tile_position
@@ -48,17 +44,21 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
         if wildlife_target is not None and wildlife_target.nature_token_reward:
             nature_tokens += 1
 
-        # TODO
-        bsizes = Counter(len(g) for g in s.env.wildlife_groups(Wildlife.BEAR))
-
-        wcounter = Counter(s.env.wildlife.values())
-        if placed_wildlife is not None:
-            wcounter[placed_wildlife] += 1
-
-        areas = {
+        hareas = {
             h: area.place_tile(a.tile_position, placed_tile)
-            for h, area in s.env.areas.items()
+            for h, area in s.env.hareas.items()
         }
+
+        wgroups = (
+            s.env.wgroups
+            if a.wildlife_position is None
+            else {
+                w: groups.place_wildlife(
+                    a.wildlife_position, s.wildlife_display[a.wildlife_index]
+                )
+                for w, groups in s.env.wgroups.items()
+            }
+        )
 
         unoccupied_tiles = set(s.env.unoccupied_tiles())
         if a.tile_position != a.wildlife_position:
@@ -76,16 +76,18 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
             if apos not in s.env.tiles
         )
 
+    bsizes = Counter(len(g) for g in wgroups[Wildlife.BEAR].groups)
+
     global_features = [
         turns_remaining,
         nature_tokens,
         bsizes[2],
         bsizes[1],
-        wcounter[Wildlife.ELK],
-        wcounter[Wildlife.SALMON],
-        wcounter[Wildlife.HAWK],
-        wcounter[Wildlife.FOX],
-        *(areas[h].largest_area for h in Habitat),
+        wgroups[Wildlife.ELK].count,
+        wgroups[Wildlife.SALMON].count,
+        wgroups[Wildlife.HAWK].count,
+        wgroups[Wildlife.FOX].count,
+        *(hareas[h].largest_area for h in Habitat),
     ]
 
     wildlife_rewards = []
@@ -97,12 +99,7 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
                 int(tile.nature_token_reward),
                 *(int(w in tile.wildlife_slots) for w in Wildlife),
                 *(
-                    (
-                        0
-                        if w not in tile.wildlife_slots
-                        # TODO
-                        else (calculate_wreward(s, w, pos) or 0)
-                    )
+                    (0 if w not in tile.wildlife_slots else wgroups[w].get_reward(pos))
                     for w in Wildlife
                 ),
             ]
@@ -113,12 +110,11 @@ def get_features(s: GameState, a: Action | None = None, cache: Cache | None = No
             [
                 0,
                 *(0 for _ in Wildlife),
-                # TODO
-                *((calculate_wreward(s, w, pos) or 0) for w in Wildlife),
+                *(wgroups[w].get_reward(pos) for w in Wildlife),
             ]
         )
 
-        tile_rewards.append([areas[h].get_best_reward(pos) for h in Habitat])
+        tile_rewards.append([hareas[h].get_best_reward(pos) for h in Habitat])
 
     return (
         np.array(global_features, dtype=np.float32),
