@@ -15,6 +15,8 @@ features_shapes = [[13], [37, 11], [34, 5]]
 def pad_list(data: list[list], length: int):
     while len(data) < length:
         data.append([0] * len(data[0]))
+    while len(data) > length:
+        data.pop()
     return data
 
 
