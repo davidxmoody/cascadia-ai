@@ -19,13 +19,24 @@ class WildlifeLayer:
     _reward_cache: dict[HexPosition, int]
     _child_cache: dict[HexPosition, Self]
 
-    def __init__(self, wildlife: Wildlife):
+    def __init__(
+        self,
+        wildlife: Wildlife,
+        wgrid: dict[HexPosition, Wildlife] | None = None,
+    ):
         self.score = 0
         self.count = 0
         self._wildlife = wildlife
         self._groups = []
         self._reward_cache = {}
         self._child_cache = {}
+
+        if wgrid is not None:
+            for pos, w in wgrid.items():
+                if w == wildlife:
+                    self.score += self.get_reward(pos, w)
+                    self._place_wildlife(pos)
+            self._reward_cache = {}
 
     def get_reward(self, pos: HexPosition, wildlife: Wildlife):
         if wildlife != self._wildlife:
@@ -162,12 +173,18 @@ class FoxLayer:
     _reward_cache: dict[tuple[HexPosition, Wildlife], int]
     _child_cache: dict[tuple[HexPosition, Wildlife], Self]
 
-    def __init__(self):
+    def __init__(self, wgrid: dict[HexPosition, Wildlife] | None = None):
         self.score = 0
         self.count = 0
         self._wgrid = {}
         self._reward_cache = {}
         self._child_cache = {}
+
+        if wgrid is not None:
+            for pos, w in wgrid.items():
+                self.score += self.get_reward(pos, w)
+                self._place_wildlife(pos, w)
+            self._reward_cache = {}
 
     def get_reward(self, pos: HexPosition, wildlife: Wildlife):
         key = (pos, wildlife)

@@ -106,6 +106,7 @@ def print_env(env: Environment):
 
 def print_state(state: GameState):
     print(f"Turns remaining: {state.turns_remaining}")
+    print(f"Nature tokens: {state.env.nature_tokens}")
     print()
 
     for i, (t, w) in enumerate(zip(state.tile_display, state.wildlife_display)):
