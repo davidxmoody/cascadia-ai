@@ -124,7 +124,7 @@ val_loader = DataLoader(
 
 logger = TensorBoardLogger("tb_logs", name="setnn")
 
-trainer = L.Trainer(max_epochs=60, logger=logger)
+trainer = L.Trainer(max_epochs=200, logger=logger)
 
 model = DQNLightning()
 
@@ -136,8 +136,8 @@ torch.save(model.state_dict(), "data/model.pth")
 
 
 # %%
-model = DQNLightning()
-model.load_state_dict(torch.load("data/model.pth", weights_only=True))
+# model = DQNLightning()
+# model.load_state_dict(torch.load("data/model.pth", weights_only=True))
 
 
 # %%
@@ -173,7 +173,7 @@ def play_test_game(
 
 
 results = []
-for _ in tqdm(range(100), desc="Playing test games"):
+for _ in tqdm(range(400), desc="Playing test games"):
     end_state = play_test_game(model)
     score = end_state.env.score
     print_state(end_state)

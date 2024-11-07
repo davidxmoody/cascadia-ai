@@ -78,8 +78,8 @@ def get_features(s: GameState, a: Action | None = None):
             if apos not in s.env.tiles
         )
 
-    fox_layer = cast(FoxLayer, s.env.wlayers[Wildlife.FOX])
-    bear_layer = cast(WildlifeLayer, s.env.wlayers[Wildlife.BEAR])
+    fox_layer = cast(FoxLayer, wlayers[Wildlife.FOX])
+    bear_layer = cast(WildlifeLayer, wlayers[Wildlife.BEAR])
 
     bsizes = Counter(len(g) for g in bear_layer._groups)
 
@@ -108,8 +108,11 @@ def get_features(s: GameState, a: Action | None = None):
                     (
                         0
                         if w not in tile.wildlife_slots
-                        else (wlayers[w].get_reward(pos, w) or 0)
-                        + fox_layer.get_reward(pos, w)
+                        else max(
+                            0,
+                            wlayers[w].get_reward(pos, w)
+                            + fox_layer.get_reward(pos, w),
+                        )
                     )
                     for w in non_fox_wildlife
                 ),
@@ -127,7 +130,7 @@ def get_features(s: GameState, a: Action | None = None):
                 0,
                 *(0 for _ in Wildlife),
                 *(
-                    (wlayers[w].get_reward(pos, w) or 0) + fox_layer.get_reward(pos, w)
+                    max(0, wlayers[w].get_reward(pos, w) + fox_layer.get_reward(pos, w))
                     for w in non_fox_wildlife
                 ),
                 fox_layer.get_reward(pos, Wildlife.FOX),
