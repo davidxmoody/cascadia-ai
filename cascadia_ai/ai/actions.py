@@ -82,7 +82,7 @@ def get_actions_and_rewards(state: GameState) -> tuple[list[Action], list[int]]:
                     wreward = calculate_wreward(state, wpos, wildlife)
                     wcache[key] = wreward
 
-                if wreward >= 0:
+                if (wreward + ntreward + ntcost) >= 0:
                     wplaced = True
                     actions.append(Action(tindex, tpos, trot, windex, wpos))
                     rewards.append(treward + ntreward + ntcost + wreward)

@@ -7,7 +7,7 @@ import lightning as L
 from tqdm import tqdm
 from cascadia_ai.ai.actions import get_actions_and_rewards
 from cascadia_ai.ai.features import get_features, features_shapes, get_next_features
-from cascadia_ai.ai.training_data import get_greedy_played_games
+from cascadia_ai.ai.training_data import get_greedy_played_games, get_model_played_games, get_model_realistic_states
 from cascadia_ai.game_state import GameState
 import numpy as np
 import pandas as pd
@@ -124,7 +124,7 @@ val_loader = DataLoader(
 
 logger = TensorBoardLogger("tb_logs", name="setnn")
 
-trainer = L.Trainer(max_epochs=200, logger=logger)
+trainer = L.Trainer(max_epochs=100, logger=logger)
 
 model = DQNLightning()
 
@@ -138,6 +138,14 @@ torch.save(model.state_dict(), "data/model.pth")
 # %%
 # model = DQNLightning()
 # model.load_state_dict(torch.load("data/model.pth", weights_only=True))
+
+
+# %%
+get_model_realistic_states(model, load=False)
+
+
+# %%
+get_model_played_games(model, load=False)
 
 
 # %%

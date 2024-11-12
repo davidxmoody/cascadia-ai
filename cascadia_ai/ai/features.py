@@ -90,7 +90,6 @@ def get_features(s: GameState, a: Action | None = None):
         nature_tokens,
         bsizes[2],
         bsizes[1],
-        # TODO try adding in scores here
         wlayers[Wildlife.ELK].count,
         wlayers[Wildlife.SALMON].count,
         wlayers[Wildlife.HAWK].count,
