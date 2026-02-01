@@ -1,7 +1,18 @@
+from typing import NamedTuple
+
 from rich.console import Console
 from rich.theme import Theme
 from cascadia_ai.game_state import GameState
 from cascadia_ai.environment import Environment
+from cascadia_ai.score import Score
+
+
+class Bounds(NamedTuple):
+    min_x: int
+    max_x: int
+    min_y: int
+    max_y: int
+
 
 color_template = [
     r"    0    ",
@@ -41,7 +52,9 @@ console = Console(
 )
 
 
-def print_env(env: Environment):
+def print_env(
+    env: Environment, bounds: Bounds | None = None, show_coords=False
+) -> Bounds:
     chars: dict[tuple[int, int], str] = {}
 
     for (q, r), tile in env.tiles.items():
@@ -76,15 +89,15 @@ def print_env(env: Environment):
 
                 match text_placeholder:
                     case "q":
-                        char = qQ[0]
+                        char = qQ[0] if show_coords else " "
                     case "Q":
-                        char = qQ[1]
+                        char = qQ[1] if show_coords else " "
                     case "r":
-                        char = rR[0]
+                        char = rR[0] if show_coords else " "
                     case "R":
-                        char = rR[1]
+                        char = rR[1] if show_coords else " "
                     case ",":
-                        char = ","
+                        char = "," if show_coords else " "
                     case "A":
                         char = ABC[0]
                     case "B":
@@ -96,12 +109,39 @@ def print_env(env: Environment):
 
                 chars[p] = f"[{style}]{char}[/{style}]"
 
-    for y in range(min(p[1] for p in chars), max(p[1] for p in chars) + 1):
+    if bounds is None:
+        bounds = Bounds(
+            min_x=min(p[0] for p in chars),
+            max_x=max(p[0] for p in chars),
+            min_y=min(p[1] for p in chars),
+            max_y=max(p[1] for p in chars),
+        )
+
+    for y in range(bounds.min_y, bounds.max_y + 1):
         line = ""
-        for x in range(min(p[0] for p in chars), max(p[0] for p in chars) + 1):
+        for x in range(bounds.min_x, bounds.max_x + 1):
             p = (x, y)
             line += chars[p] if p in chars else " "
         console.print(line, highlight=False)
+
+    return bounds
+
+
+def print_score(score: Score):
+    wildlife_parts = [
+        f"[w{w.value}] {w.value.upper()}: {v:>2} [/w{w.value}]"
+        for w, v in score.wildlife.items()
+    ]
+    console.print("Wildlife: " + " ".join(wildlife_parts), highlight=False)
+
+    habitat_parts = [
+        f"[h{h.value.lower()}] {h.value}: {v:>2} [/h{h.value.lower()}]"
+        for h, v in score.habitat.items()
+    ]
+    console.print("Habitat:  " + " ".join(habitat_parts), highlight=False)
+
+    console.print(f"Nature tokens: {score.nature_tokens}", highlight=False)
+    console.print(f"Total score: {score.total}", highlight=False)
 
 
 def print_state(state: GameState):
